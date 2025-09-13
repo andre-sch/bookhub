@@ -12,9 +12,9 @@ class Book {
   public title: string;
   public subtitle: string;
   public description: string;
-  public author: Author[];
+  public authors: Author[];
   // public photo: string;
-  public publisher: Publisher[];
+  public publishers: Publisher[];
   public edition: string;
   public language: Language;
   public numberOfPages: number;
