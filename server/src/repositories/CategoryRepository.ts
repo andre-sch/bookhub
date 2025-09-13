@@ -2,5 +2,5 @@ import { DeweyCategory } from "@/domain/DeweyCategory";
 
 export interface CategoryRepository {
   save(category: DeweyCategory): Promise<void>;
-  find(id: string): Promise<DeweyCategory>;
+  find(id: string): Promise<DeweyCategory | null>;
 }
