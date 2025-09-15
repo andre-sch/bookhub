@@ -242,6 +242,9 @@ app.post("/books", async (request: Request, response: Response) => {
 
   const params = schema.parse(request.body);
 
+  const bookRecord = await bookRepository.find(params.ISBN);
+  if (bookRecord) throw new HttpError(400, "ISBN already registered");
+
   if (params.parentISBN) {
     const parentBook = await bookRepository.find(params.parentISBN);
     if (!parentBook) throw new HttpError(400, "parent book not found");
