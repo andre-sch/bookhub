@@ -197,11 +197,8 @@ app.get("/categories/:id", async (request: Request, response: Response) => {
 
   const params = schema.parse(request.params);
 
-  const category = await categoryRepository.find(params.id);
-
-  if (!category) throw new HttpError(404, "category not found");
-
-  response.json(category);
+  const categoryTree = await categoryRepository.findHierarchy(params.id);
+  response.json(categoryTree);
 });
 
 app.post("/categories", async (request: Request, response: Response) => {
@@ -240,10 +237,11 @@ app.get("/books/:isbn", async (request: Request, response: Response) => {
   const params = schema.parse(request.params);
 
   const book = await bookRepository.find(params.isbn);
-
   if (!book) throw new HttpError(404, "book not found");
 
-  response.json(book);
+  const categoryTree = await categoryRepository.findHierarchy(book.category.ID);
+
+  response.json({ ...book, category: categoryTree });
 });
 
 app.post("/books", async (request: Request, response: Response) => {

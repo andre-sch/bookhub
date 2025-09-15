@@ -1,4 +1,4 @@
-import { CategoryRepository } from "@/repositories/CategoryRepository";
+import { CategoryRepository, DeweyCategoryTree } from "@/repositories/CategoryRepository";
 import { DeweyCategory } from "@/domain/DeweyCategory";
 import { Client } from "pg";
 
@@ -11,6 +11,8 @@ export interface DeweyCategoryRecord {
   created_at: string;
 }
 
+type DeweyCategoryNode = DeweyCategoryRecord & { level: number };
+
 export class CategoryRepositoryPostgresImpl implements CategoryRepository {
   constructor(private client: Client) {}
 
@@ -19,6 +21,25 @@ export class CategoryRepositoryPostgresImpl implements CategoryRepository {
 
     if (result.rows.length == 0) return null;
     else return this.deserialize(result.rows[0]);
+  }
+
+  public async findHierarchy(id: string): Promise<DeweyCategoryTree> {
+    const result = await this.client.query<DeweyCategoryNode>(`
+      WITH RECURSIVE ancestors AS (
+        SELECT *, 0 as level FROM dewey_category
+        WHERE id = $1
+
+        UNION ALL
+
+        SELECT c.*, a.level + 1 FROM dewey_category c
+        JOIN ancestors a ON c.id = a.parent_id
+      )
+
+      SELECT * FROM ancestors ORDER BY level DESC;`,
+      [id]
+    );
+
+    return this.deserializeTree(result.rows);
   }
 
   public async save(category: DeweyCategory): Promise<void> {
@@ -36,6 +57,17 @@ export class CategoryRepositoryPostgresImpl implements CategoryRepository {
         [category.ID, category.parentID, category.decimal, category.name, category.description, category.createdAt]
       );
     }
+  }
+
+  private deserializeTree(nodes: DeweyCategoryNode[]): DeweyCategoryTree {
+    return nodes.map(record => {
+      const category = this.deserialize(record);
+
+      return {
+        ...category,
+        level: record.level
+      };
+    });
   }
 
   private deserialize(record: DeweyCategoryRecord): DeweyCategory {
