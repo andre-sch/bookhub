@@ -8,7 +8,6 @@ class Book {
   public ISBN: string;
   public parentISBN: string | null;  // link to first book edition
   public category: DeweyCategory;
-  // public cutterCode: string;
   public title: string;
   public subtitle: string;
   public description: string;

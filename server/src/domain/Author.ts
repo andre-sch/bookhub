@@ -2,7 +2,6 @@ class Author {
   public ID: string;
   public name: string;
   public biography: string;
-  // public photo: string;
   public birthDate: Date;
   public deathDate: Date | null;
   public createdAt: number;
