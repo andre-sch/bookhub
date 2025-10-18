@@ -1,6 +1,7 @@
 import { Author } from "./Author";
 import { BookItem } from "./BookItem";
 import { DeweyCategory } from "./DeweyCategory";
+import { Genre } from "./Genre";
 import { Language } from "./Language";
 import { Publisher } from "./Publisher";
 
@@ -8,6 +9,7 @@ class Book {
   public ISBN: string;
   public parentISBN: string | null;  // link to first book edition
   public category: DeweyCategory;
+  public genres: Genre[];
   public title: string;
   public subtitle: string;
   public description: string;
