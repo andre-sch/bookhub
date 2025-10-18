@@ -6,7 +6,6 @@ import { client } from "./infra/pg/connection";
 
 import { Author } from "./domain/Author";
 import { Publisher } from "./domain/Publisher";
-import { Address } from "./domain/Address";
 import { Book } from "./domain/Book";
 import { BookItem } from "./domain/BookItem";
 import { DeweyCategory } from "./domain/DeweyCategory";
@@ -14,7 +13,6 @@ import { Language } from "./domain/Language";
 
 import { AuthorRepositoryPostgresImpl } from "./repositories/impl/postgres/AuthorRepositoryPostgresImpl";
 import { PublisherRepositoryPostgresImpl } from "./repositories/impl/postgres/PublisherRepositoryPostgresImpl";
-import { AddressRepositoryPostgresImpl } from "./repositories/impl/postgres/AddressRepositoryPostgresImpl";
 import { BookRepositoryPostgresImpl } from "./repositories/impl/postgres/BookRepositoryPostgresImpl";
 import { ItemRepositoryPostgresImpl } from "./repositories/impl/postgres/ItemRepositoryPostgresImpl";
 import { CategoryRepositoryPostgresImpl } from "./repositories/impl/postgres/CategoryRepositoryPostgresImpl";
@@ -30,58 +28,10 @@ app.get("/", (request: Request, response: Response) => {
 
 const authorRepository = new AuthorRepositoryPostgresImpl(client);
 const publisherRepository = new PublisherRepositoryPostgresImpl(client);
-const addressRepository = new AddressRepositoryPostgresImpl(client);
 const bookRepository = new BookRepositoryPostgresImpl(client);
 const itemRepository = new ItemRepositoryPostgresImpl(client);
 const categoryRepository = new CategoryRepositoryPostgresImpl(client);
 const languageRepository = new LanguageRepositoryPostgresImpl(client);
-
-app.get("/addresses/:id", async (request: Request, response: Response) => {
-  const schema = z.object({
-    id: z.uuid()
-  });
-
-  const params = schema.parse(request.params);
-
-  const address = await addressRepository.find(params.id);
-
-  if (!address) throw new HttpError(404, "address not found");
-
-  response.json(address);
-});
-
-app.post("/addresses", async (request: Request, response: Response) => {
-  if (!request.body) throw new HttpError(400, "body is required");
-
-  const schema = z.object({
-    postalCode: z.string().max(15),
-    placeName: z.string(),
-    streetName: z.string(),
-    streetNumber: z.coerce.number(),
-    complement: z.string(),
-    neighborhood: z.string(),
-    city: z.string(),
-    state: z.string(),
-    country: z.string()
-  });
-
-  const params = schema.parse(request.body);
-
-  const address = new Address();
-  address.postalCode = params.postalCode;
-  address.placeName = params.placeName;
-  address.streetName = params.streetName;
-  address.streetNumber = params.streetNumber;
-  address.complement = params.complement;
-  address.neighborhood = params.neighborhood;
-  address.city = params.city;
-  address.state = params.state;
-  address.country = params.country;
-
-  await addressRepository.save(address);
-
-  response.status(201).json(address);
-});
 
 const bcp47Pattern = /^[a-zA-Z]{2,3}(-[a-zA-Z]{4})?(-[a-zA-Z]{2}|\d{3})?$/;
 app.get("/languages/:iso_code", async (request: Request, response: Response) => {
@@ -171,19 +121,11 @@ app.get("/publishers/:id", async (request: Request, response: Response) => {
 app.post("/publishers", async (request: Request, response: Response) => {
   if (!request.body) throw new HttpError(400, "body is required");
 
-  const schema = z.object({
-    name: z.string(),
-    addressID: z.uuid()
-  });
-
+  const schema = z.object({ name: z.string() });
   const params = schema.parse(request.body);
-
-  const address = await addressRepository.find(params.addressID);
-  if (!address) throw new HttpError(400, "address not found");
 
   const publisher = new Publisher();
   publisher.name = params.name;
-  publisher.address = address;
 
   await publisherRepository.save(publisher);
 

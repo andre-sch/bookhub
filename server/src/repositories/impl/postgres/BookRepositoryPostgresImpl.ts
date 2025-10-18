@@ -2,7 +2,6 @@ import { Book } from "@/domain/Book";
 import { BookItem } from "@/domain/BookItem";
 import { Author } from "@/domain/Author";
 import { Publisher } from "@/domain/Publisher";
-import { Address } from "@/domain/Address";
 import { Language } from "@/domain/Language";
 import { DeweyCategory } from "@/domain/DeweyCategory";
 import { Genre } from "@/domain/Genre";
@@ -62,23 +61,7 @@ export class BookRepositoryPostgresImpl implements BookRepository {
         json_build_object(
           'id', p.id,
           'name', p.name,
-          'created_at', p.created_at,
-          'address', (
-            SELECT json_build_object(
-              'id', addr.id,
-              'postal_code', addr.postal_code,
-              'place_name', addr.place_name,
-              'street_name', addr.street_name,
-              'street_number', addr.street_number,
-              'complement', addr.complement,
-              'neighborhood', addr.neighborhood,
-              'city', addr.city,
-              'state', addr.state,
-              'country', addr.country
-            )
-            FROM address addr
-            WHERE addr.id = p.address_id
-          )
+          'created_at', p.created_at
         ) AS publisher,
 
         -- Language (one-to-many)
@@ -255,17 +238,6 @@ export class BookRepositoryPostgresImpl implements BookRepository {
     book.publisher = new Publisher(record.publisher.id);
     book.publisher.name = record.publisher.name;
     book.publisher.createdAt = Number(record.publisher.created_at);
-    book.publisher.address = new Address();
-    book.publisher.address.ID = record.publisher.address.id;
-    book.publisher.address.postalCode = record.publisher.address.postal_code;
-    book.publisher.address.placeName = record.publisher.address.place_name;
-    book.publisher.address.streetName = record.publisher.address.street_name;
-    book.publisher.address.streetNumber = record.publisher.address.street_number;
-    book.publisher.address.complement = record.publisher.address.complement;
-    book.publisher.address.neighborhood = record.publisher.address.neighborhood;
-    book.publisher.address.city = record.publisher.address.city;
-    book.publisher.address.state = record.publisher.address.state;
-    book.publisher.address.country = record.publisher.address.country;
 
     book.edition = record.edition;
 
