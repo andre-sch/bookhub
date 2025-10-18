@@ -19,6 +19,7 @@ interface BookRecord {
   title: string;
   subtitle: string;
   description: string;
+  cover: string;
   edition: string;
   number_of_pages: number;
   number_of_visits: number;
@@ -43,6 +44,7 @@ export class BookRepositoryPostgresImpl implements BookRepository {
         b.title,
         b.subtitle,
         b.description,
+        b.cover,
         b.edition,
         b.number_of_pages,
         b.number_of_visits,
@@ -145,15 +147,15 @@ export class BookRepositoryPostgresImpl implements BookRepository {
 
     if (recordExists) {
       await this.client.query(
-        "UPDATE book SET parent_isbn = $2, title = $3, subtitle = $4, description = $5, publisher_id = $6, category_id = $7, language_code = $8, edition = $9, number_of_pages = $10, number_of_visits = $11, published_at = $12, WHERE isbn = $1;",
-        [book.ISBN, book.parentISBN, book.title, book.subtitle, book.description, book.publisher.ID, book.category.ID, book.language.isoCode, book.edition, book.numberOfPages, book.numberOfVisits, book.publishedAt]
+        "UPDATE book SET parent_isbn = $2, title = $3, subtitle = $4, description = $5, cover =$6, publisher_id = $7, category_id = $8, language_code = $9, edition = $10, number_of_pages = $11, number_of_visits = $12, published_at = $13, WHERE isbn = $1;",
+        [book.ISBN, book.parentISBN, book.title, book.subtitle, book.description, book.cover, book.publisher.ID, book.category.ID, book.language.isoCode, book.edition, book.numberOfPages, book.numberOfVisits, book.publishedAt]
       );
     } else {
       await this.client.query("BEGIN");
       try {
         await this.client.query(
-          "INSERT INTO book (isbn, parent_isbn, title, subtitle, description, publisher_id, category_id, language_code, edition, number_of_pages, number_of_visits, published_at, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);",
-          [book.ISBN, book.parentISBN, book.title, book.subtitle, book.description, book.publisher.ID, book.category.ID, book.language.isoCode, book.edition, book.numberOfPages, book.numberOfVisits, book.publishedAt, book.createdAt]
+          "INSERT INTO book (isbn, parent_isbn, title, subtitle, description, cover, publisher_id, category_id, language_code, edition, number_of_pages, number_of_visits, published_at, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);",
+          [book.ISBN, book.parentISBN, book.title, book.subtitle, book.description, book.cover, book.publisher.ID, book.category.ID, book.language.isoCode, book.edition, book.numberOfPages, book.numberOfVisits, book.publishedAt, book.createdAt]
         );
 
         const authorsPlaceholder = book.authors.map((_, index) => `($1, $${index + 2}::UUID)`).join(", ");
@@ -187,6 +189,7 @@ export class BookRepositoryPostgresImpl implements BookRepository {
     book.title = record.title;
     book.subtitle = record.subtitle;
     book.description = record.description;
+    book.cover = record.cover;
 
     book.authors = [];
     for (const authorRecord of record.authors) {

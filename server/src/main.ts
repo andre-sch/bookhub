@@ -254,6 +254,7 @@ app.post("/books", async (request: Request, response: Response) => {
     title: z.string(),
     subtitle: z.string().optional(),
     description: z.string().optional(),
+    cover: z.string().optional(),
     authorIDs: z.array(z.uuid()).min(1),
     publisherID: z.uuid(),
     edition: z.string().optional(),

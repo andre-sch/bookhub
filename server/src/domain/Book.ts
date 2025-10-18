@@ -13,7 +13,7 @@ class Book {
   public subtitle: string;
   public description: string;
   public authors: Author[];
-  // public photo: string;
+  public cover: string;
   public publisher: Publisher;
   public edition: string;
   public language: Language;
