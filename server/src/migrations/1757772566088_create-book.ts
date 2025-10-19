@@ -12,7 +12,7 @@ export async function up({ context: client }: { context: Client }) {
     CREATE TABLE publisher (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       name VARCHAR(255) NOT NULL,
-      address_id UUID REFERENCES address(id) NOT NULL,
+      address_id UUID REFERENCES address(id),
       created_at BIGINT DEFAULT (EXTRACT (EPOCH FROM NOW()))
     );
   `);

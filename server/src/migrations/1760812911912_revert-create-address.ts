@@ -21,5 +21,5 @@ export async function down({ context: client }: { context: Client }) {
     );
   `)
 
-  await client.query("ALTER TABLE publisher ADD COLUMN address_id UUID REFERENCES address(id) NOT NULL;");
+  await client.query("ALTER TABLE publisher ADD COLUMN address_id UUID REFERENCES address(id);");
 }
