@@ -1,11 +1,12 @@
+import { transaction } from "../infra/umzug/transaction";
 import { Client } from "pg";
 
-export async function up({ context: client }: { context: Client }) {
+export const up = transaction(async (client: Client) => {
   await client.query("ALTER TABLE publisher DROP COLUMN address_id;");
   await client.query("DROP TABLE address;");
-}
+});
 
-export async function down({ context: client }: { context: Client }) {
+export const down = transaction(async (client: Client) => {
   await client.query(`
     CREATE TABLE address (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -22,4 +23,4 @@ export async function down({ context: client }: { context: Client }) {
   `)
 
   await client.query("ALTER TABLE publisher ADD COLUMN address_id UUID REFERENCES address(id);");
-}
+});

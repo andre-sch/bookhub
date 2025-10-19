@@ -1,6 +1,7 @@
+import { transaction } from "../infra/umzug/transaction";
 import { Client } from "pg";
 
-export async function up({ context: client }: { context: Client }) {
+export const up = transaction(async (client: Client) => {
   await client.query(`
     CREATE TABLE language (
       iso_code VARCHAR(35) PRIMARY KEY,
@@ -78,9 +79,9 @@ export async function up({ context: client }: { context: Client }) {
       FOREIGN KEY (author_id) REFERENCES author(id) ON DELETE CASCADE
     );
   `);
-}
+});
 
-export async function down({ context: client }: { context: Client }) {
+export const down = transaction(async (client: Client) => {
   await client.query("DROP TABLE book_author;");
   await client.query("DROP TABLE book_item;");
   await client.query("DROP TABLE book;");
@@ -88,4 +89,4 @@ export async function down({ context: client }: { context: Client }) {
   await client.query("DROP TABLE author;");
   await client.query("DROP TABLE publisher;");
   await client.query("DROP TABLE language;");
-}
+});

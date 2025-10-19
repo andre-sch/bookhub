@@ -1,12 +1,11 @@
+import { transaction } from "../infra/umzug/transaction";
 import { Client } from "pg";
 
-export async function up({ context: client }: { context: Client }) {
-  // trigram for fuzzy search
-  // and unaccent to remove diacritics
+export const up = transaction(async (client: Client) => {
   await client.query("CREATE EXTENSION IF NOT EXISTS pg_trgm;");
   await client.query("CREATE EXTENSION IF NOT EXISTS unaccent;");
 
- await client.query("ALTER TABLE book ADD COLUMN search_vector tsvector;");
+  await client.query("ALTER TABLE book ADD COLUMN search_vector tsvector;");
 
   // create a vector with title, subtitle and description tokens
   // (title have priority over subtitle and subtitle over description)
@@ -34,9 +33,9 @@ export async function up({ context: client }: { context: Client }) {
 
   // use title trigram for fuzzy search
   await client.query("CREATE INDEX idx_book_title_trgm ON book USING GIN (title gin_trgm_ops);");
-}
+});
 
-export async function down({ context: client }: { context: Client }) {
+export const down = transaction(async (client: Client) => {
   await client.query("DROP TRIGGER book_search_vector_tsvector_update ON book;");
   await client.query("DROP FUNCTION book_search_vector_update;");
   await client.query("DROP INDEX idx_book_search_vector;");
@@ -45,4 +44,4 @@ export async function down({ context: client }: { context: Client }) {
 
   await client.query("DROP EXTENSION unaccent;");
   await client.query("DROP EXTENSION pg_trgm;");
-}
+});

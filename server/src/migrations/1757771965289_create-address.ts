@@ -1,6 +1,7 @@
+import { transaction } from "../infra/umzug/transaction";
 import { Client } from "pg";
 
-export async function up({ context: client }: { context: Client }) {
+export const up = transaction(async (client: Client) => {
   await client.query(`
     CREATE TABLE address (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -14,9 +15,9 @@ export async function up({ context: client }: { context: Client }) {
       state VARCHAR(255) NOT NULL,
       country VARCHAR(255) NOT NULL
     );
-  `)
-}
+  `);
+});
 
-export async function down({ context: client }: { context: Client }) {
+export const down = transaction(async (client: Client) => {
   await client.query("DROP TABLE address;");
-}
+});

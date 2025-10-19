@@ -1,16 +1,17 @@
+import { transaction } from "../infra/umzug/transaction";
 import { Client } from "pg";
 
-export async function up({ context: client }: { context: Client }) {
+export const up = transaction(async (client: Client) => {
   const insertions = iso_639_1.map((_, index) => `($${2*index + 1}, $${2*index + 2})`);
   await client.query(
     "INSERT INTO language (iso_code, name) VALUES " + insertions.join(", "),
     iso_639_1.flat()
   );
-}
+});
 
-export async function down({ context: client }: { context: Client }) {
+export const down = transaction(async (client: Client) => {
   await client.query("DELETE FROM language;");
-}
+});
 
 const iso_639_1: [
   code: string,
