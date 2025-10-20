@@ -6,5 +6,5 @@ export const up = transaction(async (client: Client) => {
 });
 
 export const down = transaction(async (client: Client) => {
-  await client.query("ALTER TABLE dewey_category ALTER COLUMN decimal TYPE DECIMAL(9, 6);");
+  await client.query("ALTER TABLE dewey_category ALTER COLUMN decimal TYPE DECIMAL(9, 6) USING decimal::numeric;");
 });
