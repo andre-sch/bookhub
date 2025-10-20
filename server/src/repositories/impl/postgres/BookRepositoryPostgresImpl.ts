@@ -16,7 +16,7 @@ import { Client } from "pg";
 
 interface BookRecord {
   isbn: string;
-  parent_isbn: string;
+  work_id: string;
   title: string;
   subtitle: string;
   description: string;
@@ -42,7 +42,7 @@ export class BookRepositoryPostgresImpl implements BookRepository {
     return await this.client.query(`
       SELECT
         b.isbn,
-        b.parent_isbn,
+        b.work_id,
         b.title,
         b.subtitle,
         b.description,
@@ -179,8 +179,8 @@ export class BookRepositoryPostgresImpl implements BookRepository {
 
         await Promise.all([
           this.client.query(
-            "UPDATE book SET parent_isbn = $2, title = $3, subtitle = $4, description = $5, cover =$6, publisher_id = $7, category_id = $8, language_code = $9, edition = $10, number_of_pages = $11, number_of_visits = $12, published_at = $13, WHERE isbn = $1;",
-            [book.ISBN, book.parentISBN, book.title, book.subtitle, book.description, book.cover, book.publisher.ID, book.category.ID, book.language.isoCode, book.edition, book.numberOfPages, book.numberOfVisits, book.publishedAt]
+            "UPDATE book SET work_id = $2, title = $3, subtitle = $4, description = $5, cover =$6, publisher_id = $7, category_id = $8, language_code = $9, edition = $10, number_of_pages = $11, number_of_visits = $12, published_at = $13, WHERE isbn = $1;",
+            [book.ISBN, book.workID, book.title, book.subtitle, book.description, book.cover, book.publisher.ID, book.category.ID, book.language.isoCode, book.edition, book.numberOfPages, book.numberOfVisits, book.publishedAt]
           ),
 
           this.client.query(
@@ -195,8 +195,8 @@ export class BookRepositoryPostgresImpl implements BookRepository {
         ]);
       } else {
         await this.client.query(
-          "INSERT INTO book (isbn, parent_isbn, title, subtitle, description, cover, publisher_id, category_id, language_code, edition, number_of_pages, number_of_visits, published_at, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);",
-          [book.ISBN, book.parentISBN, book.title, book.subtitle, book.description, book.cover, book.publisher.ID, book.category.ID, book.language.isoCode, book.edition, book.numberOfPages, book.numberOfVisits, book.publishedAt, book.createdAt]
+          "INSERT INTO book (isbn, work_id, title, subtitle, description, cover, publisher_id, category_id, language_code, edition, number_of_pages, number_of_visits, published_at, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);",
+          [book.ISBN, book.workID, book.title, book.subtitle, book.description, book.cover, book.publisher.ID, book.category.ID, book.language.isoCode, book.edition, book.numberOfPages, book.numberOfVisits, book.publishedAt, book.createdAt]
         );
       }
 
@@ -225,7 +225,7 @@ export class BookRepositoryPostgresImpl implements BookRepository {
   private deserialize(record: BookRecord): Book {
     const book = new Book();
     book.ISBN = record.isbn;
-    book.parentISBN = record.parent_isbn;
+    book.workID = record.work_id;
 
     book.category = new DeweyCategory();
     book.category.ID = record.category.id;

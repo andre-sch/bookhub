@@ -189,7 +189,7 @@ app.post("/books", async (request: Request, response: Response) => {
 
   const schema = z.object({
     ISBN: z.string().max(13).regex(/^\d+$/),
-    parentISBN: z.string().max(13).regex(/^\d+$/).optional(),
+    workID: z.string().max(13).regex(/^\d+$/).optional(),
     categoryID: z.uuid(),
     title: z.string(),
     subtitle: z.string().optional(),
@@ -208,9 +208,9 @@ app.post("/books", async (request: Request, response: Response) => {
   const bookRecord = await bookRepository.find(params.ISBN);
   if (bookRecord) throw new HttpError(400, "ISBN already registered");
 
-  if (params.parentISBN) {
-    const parentBook = await bookRepository.find(params.parentISBN);
-    if (!parentBook) throw new HttpError(400, "parent book not found");
+  if (params.workID) {
+    const work = await bookRepository.find(params.workID);
+    if (!work) throw new HttpError(400, "related work not found");
   }
 
   const category = await categoryRepository.find(params.categoryID);
@@ -236,7 +236,7 @@ app.post("/books", async (request: Request, response: Response) => {
 
   const book = new Book();
   book.ISBN = params.ISBN;
-  book.parentISBN = params.parentISBN || null;
+  book.workID = params.workID || null;
   book.category = category;
   book.title = params.title;
   book.subtitle = params.subtitle || "";

@@ -7,14 +7,14 @@ import { Publisher } from "./Publisher";
 
 class Book {
   public ISBN: string;
-  public parentISBN: string | null;  // link to first book edition
+  public workID: string | null;
   public category: DeweyCategory;
   public genres: Genre[];
   public title: string;
   public subtitle: string;
   public description: string;
-  public authors: Author[];
   public cover: string;
+  public authors: Author[];
   public publisher: Publisher;
   public edition: string;
   public language: Language;
