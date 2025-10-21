@@ -59,8 +59,8 @@ export class BookRepositoryPostgresImpl implements BookRepository {
 
         -- Publisher (one-to-many)
         json_build_object(
-          'id', p.id,
           'name', p.name,
+          'display_name', p.display_name,
           'created_at', p.created_at
         ) AS publisher,
 
@@ -81,7 +81,7 @@ export class BookRepositoryPostgresImpl implements BookRepository {
 
       FROM book b
 
-      LEFT JOIN publisher p ON p.id = b.publisher_id
+      LEFT JOIN publisher p ON p.name = b.publisher_name
       LEFT JOIN language l ON l.iso_code = b.language_code
       LEFT JOIN dewey_category c ON c.id = b.category_id
 
@@ -184,8 +184,8 @@ export class BookRepositoryPostgresImpl implements BookRepository {
               title = $3,
               subtitle = $4,
               description = $5,
-              cover =$6,
-              publisher_id = $7,
+              cover = $6,
+              publisher_name = $7,
               category_id = $8,
               language_code = $9,
               edition = $10,
@@ -200,7 +200,7 @@ export class BookRepositoryPostgresImpl implements BookRepository {
               book.subtitle,
               book.description,
               book.cover,
-              book.publisher ? book.publisher.ID : null,
+              book.publisher ? book.publisher.name : null,
               book.category ? book.category.ID : null,
               book.language ? book.language.isoCode : null,
               book.edition,
@@ -229,7 +229,7 @@ export class BookRepositoryPostgresImpl implements BookRepository {
             subtitle,
             description,
             cover,
-            publisher_id,
+            publisher_name,
             category_id,
             language_code,
             edition,
@@ -245,7 +245,7 @@ export class BookRepositoryPostgresImpl implements BookRepository {
             book.subtitle,
             book.description,
             book.cover,
-            book.publisher ? book.publisher.ID : null,
+            book.publisher ? book.publisher.name : null,
             book.category ? book.category.ID : null,
             book.language ? book.language.isoCode : null,
             book.edition,
@@ -319,9 +319,8 @@ export class BookRepositoryPostgresImpl implements BookRepository {
     }
 
     if (record.publisher) {
-      book.publisher = new Publisher(record.publisher.id);
-      book.publisher.name = record.publisher.name;
-      book.publisher.createdAt = Number(record.publisher.created_at);
+      book.publisher = new Publisher(Number(record.publisher.created_at));
+      book.publisher.displayName = record.publisher.display_name;
     } else {
       record.publisher = null;
     }

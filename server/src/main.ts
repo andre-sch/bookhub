@@ -104,14 +104,14 @@ app.post("/authors", async (request: Request, response: Response) => {
   response.status(201).json(author);
 });
 
-app.get("/publishers/:id", async (request: Request, response: Response) => {
+app.get("/publishers/:name", async (request: Request, response: Response) => {
   const schema = z.object({
-    id: z.uuid()
+    name: z.string()
   });
 
   const params = schema.parse(request.params);
 
-  const publisher = await publisherRepository.find(params.id);
+  const publisher = await publisherRepository.find(params.name);
 
   if (!publisher) throw new HttpError(404, "publisher not found");
 
@@ -121,11 +121,11 @@ app.get("/publishers/:id", async (request: Request, response: Response) => {
 app.post("/publishers", async (request: Request, response: Response) => {
   if (!request.body) throw new HttpError(400, "body is required");
 
-  const schema = z.object({ name: z.string() });
+  const schema = z.object({ displayName: z.string() });
   const params = schema.parse(request.body);
 
   const publisher = new Publisher();
-  publisher.name = params.name;
+  publisher.displayName = params.displayName;
 
   await publisherRepository.save(publisher);
 
@@ -198,7 +198,7 @@ app.post("/books", async (request: Request, response: Response) => {
     description: z.string().optional(),
     cover: z.string().optional(),
     authorIDs: z.array(z.uuid()).min(1),
-    publisherID: z.uuid().optional(),
+    publisherName: z.string().optional(),
     edition: z.string().optional(),
     languageCode: z.string().min(2).max(35).regex(bcp47Pattern).optional(),
     numberOfPages: z.coerce.number().min(1),
@@ -234,8 +234,8 @@ app.post("/books", async (request: Request, response: Response) => {
   const authors = await Promise.all(queries);
 
   let publisher: Publisher | null = null;
-  if (params.publisherID) {
-    publisher = await publisherRepository.find(params.publisherID);
+  if (params.publisherName) {
+    publisher = await publisherRepository.find(params.publisherName);
     if (!publisher) throw new HttpError(400, "publisher not found");
   }
 
