@@ -2,7 +2,7 @@ class Author {
   public ID: string;
   public name: string;
   public biography: string;
-  public birthDate: Date;
+  public birthDate: Date | null;
   public deathDate: Date | null;
   public createdAt: number;
 
