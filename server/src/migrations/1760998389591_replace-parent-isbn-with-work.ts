@@ -29,7 +29,7 @@ export const up = transaction(async (client: Client) => {
 
 export const down = transaction(async (client: Client) => {
   await client.query("ALTER TABLE book RENAME COLUMN work_id TO parent_isbn;");
-  await client.query("ALTER TABLE book ALTER COLUMN parent_isbn TYPE VARCHAR(13) USING work_id::varchar(13);");
+  await client.query("ALTER TABLE book ALTER COLUMN parent_isbn TYPE VARCHAR(13) USING parent_isbn::varchar(13);");
   await client.query("ALTER TABLE book ADD CONSTRAINT book_parent_isbn_fkey FOREIGN KEY (parent_isbn) REFERENCES book(isbn) ON DELETE SET NULL;");
 
   await client.query("DROP TABLE work_author;");
