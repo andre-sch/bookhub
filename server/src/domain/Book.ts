@@ -8,19 +8,19 @@ import { Publisher } from "./Publisher";
 class Book {
   public ISBN: string;
   public workID: string | null;
-  public category: DeweyCategory;
+  public category: DeweyCategory | null;
   public genres: Genre[];
   public title: string;
   public subtitle: string;
   public description: string;
-  public cover: string;
+  public cover: string | null;
   public authors: Author[];
-  public publisher: Publisher;
-  public edition: string;
-  public language: Language;
+  public publisher: Publisher | null;
+  public edition: string | null;
+  public language: Language | null;
   public numberOfPages: number;
   public numberOfVisits: number;
-  public publishedAt: number;
+  public publishedAt: number | null;
   public createdAt: number;
   public items: BookItem[];
 

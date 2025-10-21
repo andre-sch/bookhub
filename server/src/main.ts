@@ -179,7 +179,9 @@ app.get("/books/:isbn", async (request: Request, response: Response) => {
   const book = await bookRepository.find(params.isbn);
   if (!book) throw new HttpError(404, "book not found");
 
-  const categoryTree = await categoryRepository.findHierarchy(book.category.ID);
+  const categoryTree = book.category
+    ? await categoryRepository.findHierarchy(book.category.ID)
+    : null;
 
   response.json({ ...book, category: categoryTree });
 });
@@ -190,17 +192,17 @@ app.post("/books", async (request: Request, response: Response) => {
   const schema = z.object({
     ISBN: z.string().max(13).regex(/^\d+$/),
     workID: z.string().max(13).regex(/^\d+$/).optional(),
-    categoryID: z.uuid(),
+    categoryID: z.uuid().optional(),
     title: z.string(),
     subtitle: z.string().optional(),
     description: z.string().optional(),
     cover: z.string().optional(),
     authorIDs: z.array(z.uuid()).min(1),
-    publisherID: z.uuid(),
+    publisherID: z.uuid().optional(),
     edition: z.string().optional(),
-    languageCode: z.string().min(2).max(35).regex(bcp47Pattern),
+    languageCode: z.string().min(2).max(35).regex(bcp47Pattern).optional(),
     numberOfPages: z.coerce.number().min(1),
-    publishedAt: z.coerce.date()
+    publishedAt: z.coerce.date().optional()
   });
 
   const params = schema.parse(request.body);
@@ -213,8 +215,11 @@ app.post("/books", async (request: Request, response: Response) => {
     if (!work) throw new HttpError(400, "related work not found");
   }
 
-  const category = await categoryRepository.find(params.categoryID);
-  if (!category) throw new HttpError(400, "category not found");
+  let category: DeweyCategory | null = null;
+  if (params.categoryID) {
+    category = await categoryRepository.find(params.categoryID);
+    if (!category) throw new HttpError(400, "category not found");
+  }
 
   const queries: Promise<Author>[] = [];
   for (const authorID of params.authorIDs) {
@@ -228,11 +233,17 @@ app.post("/books", async (request: Request, response: Response) => {
 
   const authors = await Promise.all(queries);
 
-  const publisher = await publisherRepository.find(params.publisherID);
-  if (!publisher) throw new HttpError(400, "publisher not found");
+  let publisher: Publisher | null = null;
+  if (params.publisherID) {
+    publisher = await publisherRepository.find(params.publisherID);
+    if (!publisher) throw new HttpError(400, "publisher not found");
+  }
 
-  const language = await languageRepository.find(params.languageCode);
-  if (!language) throw new HttpError(400, "language not found");
+  let language: Language | null = null;
+  if (params.languageCode) {
+    language = await languageRepository.find(params.languageCode);
+    if (!language) throw new HttpError(400, "language not found");
+  }
 
   const book = new Book();
   book.ISBN = params.ISBN;
@@ -247,7 +258,7 @@ app.post("/books", async (request: Request, response: Response) => {
   book.language = language;
   book.numberOfPages = params.numberOfPages;
   book.numberOfVisits = 0;
-  book.publishedAt = params.publishedAt.getTime();
+  book.publishedAt = params.publishedAt ? params.publishedAt.getTime() : null;
   book.items = [];
 
   await bookRepository.save(book);
