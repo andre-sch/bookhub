@@ -6,7 +6,8 @@
     "prod": "tsc && node dist/main.js",
     "migrate": "ts-node src/infra/umzug/index.ts",
     "migrate:up": "ts-node src/infra/umzug/index.ts up",
-    "migrate:down": "ts-node src/infra/umzug/index.ts down --to 0"
+    "migrate:down": "ts-node src/infra/umzug/index.ts down --to 0",
+    "migrate:create": "node -e \"const fs=require('fs');fs.writeFileSync(`src/migrations/${Date.now()}_${process.argv[1]}`,'');\""
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
