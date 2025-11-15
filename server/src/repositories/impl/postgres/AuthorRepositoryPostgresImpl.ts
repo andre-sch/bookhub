@@ -25,7 +25,10 @@ export class AuthorRepositoryPostgresImpl implements AuthorRepository {
     const result = await this.client.query("SELECT * FROM author WHERE id = $1;", [author.ID]);
     const recordExists = result.rows.length > 0;
 
-    const dateFormat = (date: Date | null) => date ? date.toISOString().slice(0, 10) : null;
+    const dateFormat = function (date: Date | null) {
+      if (!date || isNaN(date.getTime())) return null;
+      else return date.toISOString().split("T")[0];
+    }
 
     if (recordExists) {
       await this.client.query(
