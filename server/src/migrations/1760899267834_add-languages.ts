@@ -13,7 +13,7 @@ export const down = transaction(async (client: Client) => {
   await client.query("DELETE FROM language;");
 });
 
-const iso_639_1: [
+export const iso_639_1: [
   code: string,
   name: string
 ][] = [
