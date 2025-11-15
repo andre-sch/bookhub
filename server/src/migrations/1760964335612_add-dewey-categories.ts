@@ -1,19 +1,23 @@
+import { recordsTemplate } from "../infra/pg/templates";
 import { DeweyCategory } from "../domain/DeweyCategory";
 import { transaction } from "../infra/umzug/transaction";
 import { Client } from "pg";
 
 export const up = transaction(async (client: Client) => {
   const mainCategories = deserialize({
+    level: 0,
     classes: ddc_23_main_classes,
     ancestor: () => null
   });
 
   const hundredCategories = deserialize({
+    level: 1,
     classes: ddc_23_hundred_classes,
     ancestor: (decimal) => mainCategories.get(decimal[0] + "00")!.ID
   });
 
   const thousandCategories = deserialize({
+    level: 2,
     classes: ddc_23_thousand_classes,
     ancestor: (decimal) => hundredCategories.get(decimal[0] + decimal[1] + "0")!.ID
   });
@@ -24,12 +28,14 @@ export const up = transaction(async (client: Client) => {
 });
 
 function deserialize(params: {
+  level: number,
   classes: [decimal: string, name: string][],
   ancestor: (decimal: string) => string | null
 }): Map<string, DeweyCategory> {
   const categories: Map<string, DeweyCategory> = new Map();
   for (const [decimal, name] of params.classes) {
     const category = new DeweyCategory();
+    category.level = params.level;
     category.decimal = decimal;
     category.name = name;
 
@@ -42,12 +48,26 @@ function deserialize(params: {
 
 async function insert(mapping: Map<string, DeweyCategory>, client: Client) {
   const categories = mapping.values().toArray();
-  let insertions = categories.map((_, i) =>
-    `($${5*i + 1}, $${5*i + 2}, $${5*i + 3}, $${5*i + 4}, $${5*i + 5})`);
+  let template = recordsTemplate({
+    numberOfRecords: categories.length,
+    sizeOfRecord: 6
+  });
+
+  const params = [];
+  for (const category of categories) {
+    params.push(
+      category.ID,
+      category.parentID,
+      category.level,
+      category.decimal,
+      category.name,
+      category.createdAt
+    );
+  }
 
   await client.query(
-    "INSERT INTO dewey_category (id, parent_id, decimal, name, created_at) VALUES " + insertions.join(", "),
-    categories.map(c => [c.ID, c.parentID, c.decimal, c.name, c.createdAt]).flat()
+    "INSERT INTO dewey_category (id, parent_id, level, decimal, name, created_at) VALUES " + template,
+    params
   );
 }
 

@@ -2,6 +2,7 @@ class DeweyCategory {
   public ID: string;
   public parentID: string | null;
   public decimal: string;
+  public level: number;
   public name: string;
   public createdAt: number;
 
