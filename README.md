@@ -15,7 +15,8 @@ Install the following techs
 2. Install packages `npm i` for each directory `client/` and `server/`
 3. On server, run migrations `npm run migrate:up`
     1. To revert migrations, run `npm run migrate:down`
-    2. To populate database, run `npm run populate`
+    2. To create migrations, run `npm run migrate:create filename.ts`
+    3. And to populate database, run `npm run populate`
 4. Execute client and server on development `npm run dev`
 
 ## Project structure
