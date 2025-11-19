@@ -224,10 +224,39 @@ app.get("/books/:isbn", async (request: Request, response: Response) => {
   if (!book) throw new HttpError(404, "book not found");
 
   const categoryTree = book.category
-    ? await categoryRepository.findHierarchy(book.category.ID)
+    ? await categoryRepository.findHierarchy(book.category.decimal)
     : null;
 
-  response.json({ ...book, category: categoryTree });
+  response.json({
+    ISBN: book.ISBN,
+    workID: book.workID,
+    title: book.title,
+    subtitle: book.subtitle,
+    description: book.description,
+    authors: book.authors.map(author => ({
+      ID: author.ID,
+      name: author.name
+    })),
+    publisher: book.publisher ? {
+      name: book.publisher.name,
+      displayName: book.publisher.displayName
+    } : null,
+    categoryTree: categoryTree?.map(category => ({
+      ID: category.ID,
+      name: category.name,
+      decimal: category.decimal,
+      level: category.level
+    })),
+    cover: book.cover,
+    edition: book.edition,
+    language: book.language ? {
+      isoCode: book.language.isoCode,
+      name: book.language.name
+    } : null,
+    numberOfPages: book.numberOfPages,
+    numberOfVisits: book.numberOfVisits,
+    createdAt: book.createdAt
+  });
 });
 
 app.post("/books", async (request: Request, response: Response) => {
