@@ -10,6 +10,7 @@ import { client } from "../infra/pg/connection";
   }, 1000);
 
   await loadDataset();
+  await client.query("REFRESH MATERIALIZED VIEW CONCURRENTLY book_popularity;");
 
   clearInterval(progress);
   await client.end();
