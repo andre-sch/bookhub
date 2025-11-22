@@ -1,4 +1,4 @@
-import { CategoryRepository, DeweyCategoryTree } from "@/repositories/CategoryRepository";
+import { CategoryRepository } from "@/repositories/CategoryRepository";
 import { DeweyCategory } from "@/domain/DeweyCategory";
 
 export class CategoryRepositoryInMemoryImpl implements CategoryRepository {
@@ -8,20 +8,10 @@ export class CategoryRepositoryInMemoryImpl implements CategoryRepository {
     return this.categories.get(id) || null;
   }
 
-  public async findHierarchy(id: string): Promise<DeweyCategoryTree> {
-    const hierarchy: DeweyCategoryTree = [];
-    let currentID: string | null = id;
-    let level = 0;
-
-    while (currentID) {
-      const category = this.categories.get(currentID);
-      if (!category) throw new Error(`Tree node with id ${currentID} not found`);
-      hierarchy.push({ ...category, level });
-      currentID = category.parentID;
-      level++;
-    }
-
-    return hierarchy;
+  public async findHierarchy(decimal: string): Promise<DeweyCategory[]> {
+    return this.categories.values().toArray()
+      .filter(c => c.decimal == decimal)
+      .sort((a, b) => b.level - a.level);
   }
 
   public async save(category: DeweyCategory): Promise<void> {

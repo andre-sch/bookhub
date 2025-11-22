@@ -8,9 +8,11 @@
     "migrate:up": "ts-node src/infra/umzug/index.ts up",
     "migrate:down": "ts-node src/infra/umzug/index.ts down --to 0",
     "migrate:create": "node -e \"const fs=require('fs');fs.writeFileSync(`src/migrations/${Date.now()}_${process.argv[1]}`,'');\"",
+    "populate": "ts-node src/scripts/populate_db.ts",
     "jwt-key": "node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
   },
   "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/jsonwebtoken": "^9.0.10",
@@ -21,13 +23,17 @@
     "typescript": "^5.9.2"
   },
   "dependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
+    "date-fns": "^4.1.0",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
+    "node-cron": "^4.2.1",
     "pg": "^8.16.3",
+    "striptags": "^3.2.0",
     "umzug": "^3.8.2",
     "zod": "^4.0.15"
   }

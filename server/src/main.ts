@@ -2,8 +2,11 @@ import "dotenv/config";
 import z from "zod";
 import cors from "cors";
 import express, { Request, Response } from "express";
+import bcrypt from "bcrypt";
 import { client } from "./infra/pg/connection";
+import "./scripts/refresh_catalog";
 
+import { Account } from "./domain/Account";
 import { Author } from "./domain/Author";
 import { Publisher } from "./domain/Publisher";
 import { Book } from "./domain/Book";
@@ -13,6 +16,7 @@ import { Language } from "./domain/Language";
 import { Permission } from "./domain/Permission";
 import { Role } from "./domain/Role";
 
+import { AccountRepositoryPostgresImpl } from "./repositories/impl/postgres/AccountRepositoryPostgresImpl";
 import { AuthorRepositoryPostgresImpl } from "./repositories/impl/postgres/AuthorRepositoryPostgresImpl";
 import { PublisherRepositoryPostgresImpl } from "./repositories/impl/postgres/PublisherRepositoryPostgresImpl";
 import { BookRepositoryPostgresImpl } from "./repositories/impl/postgres/BookRepositoryPostgresImpl";
@@ -42,6 +46,7 @@ app.get("/", (request: Request, response: Response) => {
   response.json({ message: "root endpoint" });
 });
 
+const accountRepository = new AccountRepositoryPostgresImpl(client);
 const authorRepository = new AuthorRepositoryPostgresImpl(client);
 const publisherRepository = new PublisherRepositoryPostgresImpl(client);
 const bookRepository = new BookRepositoryPostgresImpl(client);
@@ -397,6 +402,28 @@ app.post("/roles", async (request: Request, response: Response) => {
 });
 
 
+app.post("/accounts/register", async (request: Request, response: Response) => {
+  const schema = z.object({
+    email: z.email(),
+    password: z.string()
+  });
+
+  const params = schema.parse(request.params);
+
+  const accountExists = await accountRepository.findByEmail(params.email);
+  if (accountExists) throw new HttpError(400, "email already used");
+
+  const account = new Account();
+  account.email = params.email;
+
+  const saltRounds = 10;
+  account.password_hash = await bcrypt.hash(params.password, saltRounds);
+
+  await accountRepository.save(account);
+
+  response.status(201).json(account);
+})
+
 const bcp47Pattern = /^[a-zA-Z]{2,3}(-[a-zA-Z]{4})?(-[a-zA-Z]{2}|\d{3})?$/;
 app.get("/languages/:iso_code", async (request: Request, response: Response) => {
   const schema = z.object({
@@ -468,14 +495,14 @@ app.post("/authors", async (request: Request, response: Response) => {
   response.status(201).json(author);
 });
 
-app.get("/publishers/:id", async (request: Request, response: Response) => {
+app.get("/publishers/:name", async (request: Request, response: Response) => {
   const schema = z.object({
-    id: z.uuid()
+    name: z.string()
   });
 
   const params = schema.parse(request.params);
 
-  const publisher = await publisherRepository.find(params.id);
+  const publisher = await publisherRepository.find(params.name);
 
   if (!publisher) throw new HttpError(404, "publisher not found");
 
@@ -485,11 +512,11 @@ app.get("/publishers/:id", async (request: Request, response: Response) => {
 app.post("/publishers", async (request: Request, response: Response) => {
   if (!request.body) throw new HttpError(400, "body is required");
 
-  const schema = z.object({ name: z.string() });
+  const schema = z.object({ displayName: z.string() });
   const params = schema.parse(request.body);
 
   const publisher = new Publisher();
-  publisher.name = params.name;
+  publisher.displayName = params.displayName;
 
   await publisherRepository.save(publisher);
 
@@ -512,9 +539,8 @@ app.post("/categories", async (request: Request, response: Response) => {
 
   const schema = z.object({
     parentID: z.uuid().optional(),
-    decimal: z.coerce.number(),
+    decimal: z.string(),
     name: z.string(),
-    description: z.string().optional()
   });
 
   const params = schema.parse(request.body);
@@ -528,11 +554,27 @@ app.post("/categories", async (request: Request, response: Response) => {
   category.parentID = params.parentID || null;
   category.decimal = params.decimal;
   category.name = params.name;
-  category.description = params.description || "";
 
   await categoryRepository.save(category);
 
   response.status(201).json(category);
+});
+
+app.get("/books", async (request: Request, response: Response) => {
+  const catalog = await bookRepository.listCatalog();
+  const view: Record<string, any[]> = {};
+
+  for (const genre in catalog) {
+    view[genre] = catalog[genre].map(book => ({
+      ISBN: book.ISBN,
+      title: book.title,
+      subtitle: book.subtitle,
+      authors: book.authors,
+      cover: book.cover
+    }));
+  }
+
+  response.json(view);
 });
 
 app.get("/books/:isbn", async (request: Request, response: Response) => {
@@ -545,9 +587,40 @@ app.get("/books/:isbn", async (request: Request, response: Response) => {
   const book = await bookRepository.find(params.isbn);
   if (!book) throw new HttpError(404, "book not found");
 
-  const categoryTree = await categoryRepository.findHierarchy(book.category.ID);
+  const categoryTree = book.category
+    ? await categoryRepository.findHierarchy(book.category.decimal)
+    : null;
 
-  response.json({ ...book, category: categoryTree });
+  response.json({
+    ISBN: book.ISBN,
+    workID: book.workID,
+    title: book.title,
+    subtitle: book.subtitle,
+    description: book.description,
+    authors: book.authors.map(author => ({
+      ID: author.ID,
+      name: author.name
+    })),
+    publisher: book.publisher ? {
+      name: book.publisher.name,
+      displayName: book.publisher.displayName
+    } : null,
+    categoryTree: categoryTree?.map(category => ({
+      ID: category.ID,
+      name: category.name,
+      decimal: category.decimal,
+      level: category.level
+    })),
+    cover: book.cover,
+    edition: book.edition,
+    language: book.language ? {
+      isoCode: book.language.isoCode,
+      name: book.language.name
+    } : null,
+    numberOfPages: book.numberOfPages,
+    numberOfVisits: book.numberOfVisits,
+    createdAt: book.createdAt
+  });
 });
 
 app.post("/books", async (request: Request, response: Response) => {
@@ -555,18 +628,18 @@ app.post("/books", async (request: Request, response: Response) => {
 
   const schema = z.object({
     ISBN: z.string().max(13).regex(/^\d+$/),
-    parentISBN: z.string().max(13).regex(/^\d+$/).optional(),
-    categoryID: z.uuid(),
+    workID: z.string().max(13).regex(/^\d+$/).optional(),
+    categoryID: z.uuid().optional(),
     title: z.string(),
     subtitle: z.string().optional(),
     description: z.string().optional(),
     cover: z.string().optional(),
     authorIDs: z.array(z.uuid()).min(1),
-    publisherID: z.uuid(),
+    publisherName: z.string().optional(),
     edition: z.string().optional(),
-    languageCode: z.string().min(2).max(35).regex(bcp47Pattern),
+    languageCode: z.string().min(2).max(35).regex(bcp47Pattern).optional(),
     numberOfPages: z.coerce.number().min(1),
-    publishedAt: z.coerce.date()
+    publishedAt: z.coerce.date().optional()
   });
 
   const params = schema.parse(request.body);
@@ -574,13 +647,16 @@ app.post("/books", async (request: Request, response: Response) => {
   const bookRecord = await bookRepository.find(params.ISBN);
   if (bookRecord) throw new HttpError(400, "ISBN already registered");
 
-  if (params.parentISBN) {
-    const parentBook = await bookRepository.find(params.parentISBN);
-    if (!parentBook) throw new HttpError(400, "parent book not found");
+  if (params.workID) {
+    const work = await bookRepository.find(params.workID);
+    if (!work) throw new HttpError(400, "related work not found");
   }
 
-  const category = await categoryRepository.find(params.categoryID);
-  if (!category) throw new HttpError(400, "category not found");
+  let category: DeweyCategory | null = null;
+  if (params.categoryID) {
+    category = await categoryRepository.find(params.categoryID);
+    if (!category) throw new HttpError(400, "category not found");
+  }
 
   const queries: Promise<Author>[] = [];
   for (const authorID of params.authorIDs) {
@@ -594,15 +670,21 @@ app.post("/books", async (request: Request, response: Response) => {
 
   const authors = await Promise.all(queries);
 
-  const publisher = await publisherRepository.find(params.publisherID);
-  if (!publisher) throw new HttpError(400, "publisher not found");
+  let publisher: Publisher | null = null;
+  if (params.publisherName) {
+    publisher = await publisherRepository.find(params.publisherName);
+    if (!publisher) throw new HttpError(400, "publisher not found");
+  }
 
-  const language = await languageRepository.find(params.languageCode);
-  if (!language) throw new HttpError(400, "language not found");
+  let language: Language | null = null;
+  if (params.languageCode) {
+    language = await languageRepository.find(params.languageCode);
+    if (!language) throw new HttpError(400, "language not found");
+  }
 
   const book = new Book();
   book.ISBN = params.ISBN;
-  book.parentISBN = params.parentISBN || null;
+  book.workID = params.workID || null;
   book.category = category;
   book.title = params.title;
   book.subtitle = params.subtitle || "";
@@ -613,7 +695,7 @@ app.post("/books", async (request: Request, response: Response) => {
   book.language = language;
   book.numberOfPages = params.numberOfPages;
   book.numberOfVisits = 0;
-  book.publishedAt = params.publishedAt.getTime();
+  book.publishedAt = params.publishedAt ? params.publishedAt.getTime() : null;
   book.items = [];
 
   await bookRepository.save(book);
@@ -699,4 +781,4 @@ app.use("/", (error: Error, request: Request, response: Response, next: Function
   response.status(code).json({ message, body });
 });
 
-app.listen(4000, () => console.log("server is running"));
+app.listen(4000, () => console.log("server is running on port", 4000));

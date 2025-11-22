@@ -1,4 +1,4 @@
-import { CategoryRepository, DeweyCategoryTree } from "@/repositories/CategoryRepository";
+import { CategoryRepository } from "@/repositories/CategoryRepository";
 import { DeweyCategory } from "@/domain/DeweyCategory";
 import { Client } from "pg";
 
@@ -6,12 +6,10 @@ export interface DeweyCategoryRecord {
   id: string;
   parent_id: string;
   decimal: string;
+  level: number;
   name: string;
-  description: string;
   created_at: string;
 }
-
-type DeweyCategoryNode = DeweyCategoryRecord & { level: number };
 
 export class CategoryRepositoryPostgresImpl implements CategoryRepository {
   constructor(private client: Client) {}
@@ -23,59 +21,48 @@ export class CategoryRepositoryPostgresImpl implements CategoryRepository {
     else return this.deserialize(result.rows[0]);
   }
 
-  public async findHierarchy(id: string): Promise<DeweyCategoryTree> {
-    const result = await this.client.query<DeweyCategoryNode>(`
-      WITH RECURSIVE ancestors AS (
-        SELECT *, 0 as level FROM dewey_category
-        WHERE id = $1
+  public async findHierarchy(decimal: string): Promise<DeweyCategory[]> {
+    if (!decimal) return [];
 
-        UNION ALL
-
-        SELECT c.*, a.level + 1 FROM dewey_category c
-        JOIN ancestors a ON c.id = a.parent_id
-      )
-
-      SELECT * FROM ancestors ORDER BY level DESC;`,
-      [id]
+    const result = await this.client.query<DeweyCategoryRecord>(`
+        SELECT * FROM dewey_category
+        WHERE
+          decimal = $1 AND level = 0 OR
+          decimal = $2 AND level = 1 OR
+          decimal = $3 AND level = 2
+        ORDER BY level;`,
+      [decimal[0] + "00", decimal[0] + decimal[1] + "0", decimal]
     );
 
-    return this.deserializeTree(result.rows);
+    return result.rows.map(this.deserialize);
   }
 
   public async save(category: DeweyCategory): Promise<void> {
-    const result = await this.client.query("SELECT * FROM dewey_category WHERE id = $1;", [category.ID]);
-    const recordExists = result.rows.length > 0;
+    const result = await this.client.query(
+      "SELECT * FROM dewey_category WHERE id = $1;",
+      [category.ID]
+    );
 
+    const recordExists = result.rows.length > 0;
     if (recordExists) {
       await this.client.query(
-        "UPDATE dewey_category SET parent_id = $2, decimal = $3, name = $4, description = $5 WHERE id = $1;",
-        [category.ID, category.parentID, category.decimal, category.name, category.description]
+        "UPDATE dewey_category SET parent_id = $2, decimal = $3, level = $4, name = $5, WHERE id = $1;",
+        [category.ID, category.parentID, category.decimal, category.level, category.name]
       );
     } else {
       await this.client.query(
-        "INSERT INTO dewey_category (id, parent_id, decimal, name, description, created_at) VALUES ($1, $2, $3, $4, $5, $6);",
-        [category.ID, category.parentID, category.decimal, category.name, category.description, category.createdAt]
+        "INSERT INTO dewey_category (id, parent_id, decimal, level, name, created_at) VALUES ($1, $2, $3, $4, $5, $6);",
+        [category.ID, category.parentID, category.decimal, category.level, category.name, category.createdAt]
       );
     }
-  }
-
-  private deserializeTree(nodes: DeweyCategoryNode[]): DeweyCategoryTree {
-    return nodes.map(record => {
-      const category = this.deserialize(record);
-
-      return {
-        ...category,
-        level: record.level
-      };
-    });
   }
 
   private deserialize(record: DeweyCategoryRecord): DeweyCategory {
     const category = new DeweyCategory(record.id, Number(record.created_at));
     category.parentID = record.parent_id;
-    category.decimal = Number(record.decimal);
+    category.decimal = record.decimal;
+    category.level = record.level;
     category.name = record.name;
-    category.description = record.description;
     return category;
   }
 }

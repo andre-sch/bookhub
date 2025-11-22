@@ -13,25 +13,26 @@ import { GenreRecord } from "./GenreRepositoryPostgresImpl";
 import { LanguageRecord } from "@/repositories/impl/postgres/LanguageRepositoryPostgresImpl";
 import { BookItemRecord } from "@/repositories/impl/postgres/ItemRepositoryPostgresImpl";
 import { Client } from "pg";
+import { templateOfList } from "@/infra/pg/templates";
 
 interface BookRecord {
   isbn: string;
-  parent_isbn: string;
+  work_id: string | null;
   title: string;
-  subtitle: string;
-  description: string;
-  cover: string;
-  edition: string;
+  subtitle: string | null;
+  description: string | null;
+  cover: string | null;
+  edition: string | null;
   number_of_pages: number;
   number_of_visits: number;
-  published_at: number;
+  published_at: number | null;
   created_at: string;
 
   genres: GenreRecord[];
   authors: AuthorRecord[];
-  publisher: PublisherRecord;
-  category: DeweyCategoryRecord;
-  language: LanguageRecord;
+  publisher: PublisherRecord | null;
+  category: DeweyCategoryRecord | null;
+  language: LanguageRecord | null;
   items: BookItemRecord[];
 }
 
@@ -42,7 +43,7 @@ export class BookRepositoryPostgresImpl implements BookRepository {
     return await this.client.query(`
       SELECT
         b.isbn,
-        b.parent_isbn,
+        b.work_id,
         b.title,
         b.subtitle,
         b.description,
@@ -59,8 +60,8 @@ export class BookRepositoryPostgresImpl implements BookRepository {
 
         -- Publisher (one-to-many)
         json_build_object(
-          'id', p.id,
           'name', p.name,
+          'display_name', p.display_name,
           'created_at', p.created_at
         ) AS publisher,
 
@@ -76,13 +77,12 @@ export class BookRepositoryPostgresImpl implements BookRepository {
           'parent_id', c.parent_id,
           'decimal', c.decimal,
           'name', c.name,
-          'description', c.description,
           'created_at', c.created_at
         ) AS category
 
       FROM book b
 
-      LEFT JOIN publisher p ON p.id = b.publisher_id
+      LEFT JOIN publisher p ON p.name = b.publisher_name
       LEFT JOIN language l ON l.iso_code = b.language_code
       LEFT JOIN dewey_category c ON c.id = b.category_id
 
@@ -90,12 +90,12 @@ export class BookRepositoryPostgresImpl implements BookRepository {
       LEFT JOIN LATERAL (
         SELECT json_agg(
           json_build_object(
-            'id', g.id,
-            'name', g.name
+            'name', g.name,
+            'display_name', g.display_name
           )
         ) AS obj
         FROM book_genre bg
-        JOIN genre g ON bg.genre_id = g.id
+        JOIN genre g ON bg.genre = g.name
         WHERE bg.book_isbn = b.isbn
       ) genres ON TRUE
 
@@ -165,28 +165,96 @@ export class BookRepositoryPostgresImpl implements BookRepository {
     }
   }
 
+  public async listCatalog(options?: { booksPerRow?: number; }) {
+    const booksPerRow = options?.booksPerRow || 8;
+
+    const topBooks = (await this.client.query(`
+      SELECT DISTINCT ON (bp.isbn) * FROM book_popularity bp
+      ORDER BY bp.isbn, bp.popularity_score DESC
+      LIMIT ${booksPerRow};
+    `)).rows.map(book => ({ ...book, ISBN: book.isbn }));
+
+    const topBooksBy = (genre: string) => (
+      this.client.query(`
+        SELECT DISTINCT ON (bp.isbn)
+          bp.*,
+          author_obj.list as authors
+        FROM book_popularity bp
+        JOIN book_genre bg ON bp.isbn = bg.book_isbn
+        JOIN LATERAL (
+          SELECT ARRAY_AGG(a.name ORDER BY a.name) AS list
+          FROM book_author ba
+          JOIN author a ON ba.author_id = a.id
+          WHERE ba.book_isbn = bp.isbn
+        ) AS author_obj ON TRUE
+        WHERE bg.genre LIKE $1
+        ORDER BY bp.isbn, bp.popularity_score DESC
+        LIMIT ${booksPerRow};`,
+        [`%${genre}%`]
+      )
+    ).then(result => result.rows.map(book => ({ ...book, ISBN: book.isbn })));
+
+    const catalog: Record<string, Book[]> = {
+      trends: topBooks,
+      fiction: await topBooksBy("fiction"),
+      kids: await topBooksBy("juvenile"),
+      drama: await topBooksBy("drama"),
+      humor: await topBooksBy("humor"),
+      poetry: await topBooksBy("poetry"),
+    };
+
+    return catalog;
+  }
+
   public async save(book: Book): Promise<void> {
     const result = await this.query(book.ISBN);
     const recordExists = result.rows.length > 0;
 
     try {
       await this.client.query("BEGIN;");
-      const genreIDs = book.genres.map((genre) => genre.ID);
+      const genres = book.genres.map((genre) => genre.name);
       const authorIDs = book.authors.map((author) => author.ID);
 
       if (recordExists) {
-        const insertedGenreIDs = genreIDs.map((_, index) => "$" + (index + 2)).join(",");
+        const insertedGenres = genres.map((_, index) => "$" + (index + 2)).join(",");
         const insertedAuthorIDs = authorIDs.map((_, index) => "$" + (index + 2)).join(",");
 
         await Promise.all([
-          this.client.query(
-            "UPDATE book SET parent_isbn = $2, title = $3, subtitle = $4, description = $5, cover =$6, publisher_id = $7, category_id = $8, language_code = $9, edition = $10, number_of_pages = $11, number_of_visits = $12, published_at = $13, WHERE isbn = $1;",
-            [book.ISBN, book.parentISBN, book.title, book.subtitle, book.description, book.cover, book.publisher.ID, book.category.ID, book.language.isoCode, book.edition, book.numberOfPages, book.numberOfVisits, book.publishedAt]
+          this.client.query(`
+            UPDATE book SET
+              work_id = $2,
+              title = $3,
+              subtitle = $4,
+              description = $5,
+              cover = $6,
+              publisher_name = $7,
+              category_id = $8,
+              language_code = $9,
+              edition = $10,
+              number_of_pages = $11,
+              number_of_visits = $12,
+              published_at = $13,
+            WHERE isbn = $1;`,
+            [
+              book.ISBN,
+              book.workID,
+              book.title,
+              book.subtitle,
+              book.description,
+              book.cover,
+              book.publisher ? book.publisher.name : null,
+              book.category ? book.category.ID : null,
+              book.language ? book.language.isoCode : null,
+              book.edition,
+              book.numberOfPages,
+              book.numberOfVisits,
+              book.publishedAt
+            ]
           ),
 
           this.client.query(
-            `DELETE FROM book_genre WHERE book_isbn = $1 AND genre_id NOT IN (${insertedGenreIDs});`,
-            [book.ISBN, ...genreIDs]
+            `DELETE FROM book_genre WHERE book_isbn = $1 AND genre_id NOT IN (${insertedGenres});`,
+            [book.ISBN, ...genres]
           ),
 
           this.client.query(
@@ -195,19 +263,49 @@ export class BookRepositoryPostgresImpl implements BookRepository {
           )
         ]);
       } else {
-        await this.client.query(
-          "INSERT INTO book (isbn, parent_isbn, title, subtitle, description, cover, publisher_id, category_id, language_code, edition, number_of_pages, number_of_visits, published_at, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);",
-          [book.ISBN, book.parentISBN, book.title, book.subtitle, book.description, book.cover, book.publisher.ID, book.category.ID, book.language.isoCode, book.edition, book.numberOfPages, book.numberOfVisits, book.publishedAt, book.createdAt]
+        await this.client.query(`
+          INSERT INTO book (
+            isbn,
+            work_id,
+            title,
+            subtitle,
+            description,
+            cover,
+            publisher_name,
+            category_id,
+            language_code,
+            edition,
+            number_of_pages,
+            number_of_visits,
+            published_at,
+            created_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);`,
+          [
+            book.ISBN,
+            book.workID,
+            book.title,
+            book.subtitle,
+            book.description,
+            book.cover,
+            book.publisher ? book.publisher.name : null,
+            book.category ? book.category.ID : null,
+            book.language ? book.language.isoCode : null,
+            book.edition,
+            book.numberOfPages,
+            book.numberOfVisits,
+            book.publishedAt,
+            book.createdAt
+          ]
         );
       }
 
-      const genreInsertions = genreIDs.map((_, index) => `($1, $${index + 2}::UUID)`).join(", ");
+      const genreInsertions = genres.map((_, index) => `($1, $${index + 2}::UUID)`).join(", ");
       const authorInsertions = authorIDs.map((_, index) => `($1, $${index + 2}::UUID)`).join(", ");
 
       await Promise.all([
         this.client.query(`
-          INSERT INTO book_genre (book_isbn, genre_id) VALUES ${genreInsertions} ON CONFLICT DO NOTHING;`,
-          [book.ISBN, ...genreIDs]
+          INSERT INTO book_genre (book_isbn, genre) VALUES ${genreInsertions} ON CONFLICT DO NOTHING;`,
+          [book.ISBN, ...genres]
         ),
 
         this.client.query(`
@@ -226,26 +324,29 @@ export class BookRepositoryPostgresImpl implements BookRepository {
   private deserialize(record: BookRecord): Book {
     const book = new Book();
     book.ISBN = record.isbn;
-    book.parentISBN = record.parent_isbn;
+    book.workID = record.work_id;
 
-    book.category = new DeweyCategory();
-    book.category.ID = record.category.id;
-    book.category.parentID = record.category.parent_id;
-    book.category.decimal = Number(record.category.decimal);
-    book.category.name = record.category.name;
-    book.category.description = record.category.description;
-    book.category.createdAt = Number(record.category.created_at);
+    if (record.category) {
+      book.category = new DeweyCategory();
+      book.category.ID = record.category.id;
+      book.category.parentID = record.category.parent_id;
+      book.category.decimal = record.category.decimal;
+      book.category.name = record.category.name;
+      book.category.createdAt = Number(record.category.created_at);
+    } else {
+      book.category = null;
+    }
 
     book.genres = [];
     for (const genreRecord of record.genres) {
-      const genre = new Genre(genreRecord.id);
-      genre.name = genreRecord.name;
+      const genre = new Genre();
+      genre.displayName = genreRecord.display_name;
       book.genres.push(genre);
     }
 
     book.title = record.title;
-    book.subtitle = record.subtitle;
-    book.description = record.description;
+    book.subtitle = record.subtitle || "";
+    book.description = record.description || "";
     book.cover = record.cover;
 
     book.authors = [];
@@ -253,21 +354,28 @@ export class BookRepositoryPostgresImpl implements BookRepository {
       const author = new Author(authorRecord.id);
       author.name = authorRecord.name;
       author.biography = authorRecord.biography;
-      author.birthDate = new Date(authorRecord.birth_date);
+      author.birthDate = authorRecord.birth_date ? new Date(authorRecord.birth_date) : null;
       author.deathDate = authorRecord.death_date ? new Date(authorRecord.death_date) : null;
       author.createdAt = Number(authorRecord.created_at);
       book.authors.push(author);
     }
 
-    book.publisher = new Publisher(record.publisher.id);
-    book.publisher.name = record.publisher.name;
-    book.publisher.createdAt = Number(record.publisher.created_at);
+    if (record.publisher) {
+      book.publisher = new Publisher(Number(record.publisher.created_at));
+      book.publisher.displayName = record.publisher.display_name;
+    } else {
+      record.publisher = null;
+    }
 
     book.edition = record.edition;
 
-    book.language = new Language();
-    book.language.isoCode = record.language.iso_code;
-    book.language.name = record.language.name;
+    if (record.language) {
+      book.language = new Language();
+      book.language.isoCode = record.language.iso_code;
+      book.language.name = record.language.name;
+    } else {
+      record.language = null;
+    }
 
     book.numberOfPages = record.number_of_pages;
     book.numberOfVisits = record.number_of_visits;

@@ -6,7 +6,7 @@ export interface AuthorRecord {
   id: string;
   name: string;
   biography: string;
-  birth_date: string;
+  birth_date: string | null;
   death_date: string | null;
   created_at: string;
 }
@@ -25,7 +25,10 @@ export class AuthorRepositoryPostgresImpl implements AuthorRepository {
     const result = await this.client.query("SELECT * FROM author WHERE id = $1;", [author.ID]);
     const recordExists = result.rows.length > 0;
 
-    const dateFormat = (date: Date | null) => date ? date.toISOString().slice(0, 10) : null;
+    const dateFormat = function (date: Date | null) {
+      if (!date || isNaN(date.getTime())) return null;
+      else return date.toISOString().split("T")[0];
+    }
 
     if (recordExists) {
       await this.client.query(
@@ -44,7 +47,7 @@ export class AuthorRepositoryPostgresImpl implements AuthorRepository {
     const author = new Author(record.id, Number(record.created_at));
     author.name = record.name;
     author.biography = record.biography;
-    author.birthDate = new Date(record.birth_date);
+    author.birthDate = record.birth_date ? new Date(record.birth_date) : null;
     author.deathDate = record.death_date ? new Date(record.death_date) : null;
     return author;
   }
