@@ -5,7 +5,7 @@ export const up = transaction(async (client: Client) => {
   await client.query(`
     CREATE TABLE rating (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      account_id UUID REFERENCES account(id) ON DELETE SET NULL,
+      user_id UUID REFERENCES users(id) ON DELETE SET NULL,
       work_id UUID REFERENCES work(id) ON DELETE CASCADE,
       book_isbn VARCHAR(13) REFERENCES book(isbn) ON DELETE CASCADE,
       score INTEGER NOT NULL CHECK (score BETWEEN 1 AND 5),
