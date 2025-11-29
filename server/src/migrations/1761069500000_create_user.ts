@@ -62,3 +62,4 @@ export const down = transaction(async (client: Client) => {
     await client.query("DROP TABLE role;");
     await client.query("DROP TABLE permission;");
 });
+

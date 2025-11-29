@@ -4,7 +4,7 @@ import { Client } from "pg";
 
 export interface RatingRecord {
   id: string;
-  account_id: string;
+  user_id: string;
   work_id: string;
   book_isbn: string | null;
   score: number;
@@ -32,7 +32,7 @@ export class RatingRepositoryPostgresImpl implements RatingRepository {
       );
     } else {
       await this.client.query(
-        "INSERT INTO rating (id, account_id, work_id, book_isbn, score, created_at) VALUES ($1, $2, $3, $4, $5, $6);",
+        "INSERT INTO rating (id, user_id, work_id, book_isbn, score, created_at) VALUES ($1, $2, $3, $4, $5, $6);",
         [rating.ID, rating.accountID, rating.workID, rating.bookISBN, rating.score, rating.createdAt]
       );
     }
@@ -40,7 +40,7 @@ export class RatingRepositoryPostgresImpl implements RatingRepository {
 
   private deserialize(record: RatingRecord): Rating {
     const rating = new Rating(record.id, Number(record.created_at));
-    rating.accountID = record.account_id
+    rating.accountID = record.user_id
     rating.workID = record.work_id;
     rating.bookISBN = record.book_isbn;
     rating.score = record.score;
