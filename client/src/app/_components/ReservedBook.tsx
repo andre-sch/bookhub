@@ -7,6 +7,7 @@ interface ReservedBookProps {
     bookName:string;
     bookAuthor:string;
     bookId: string;
+    itemId: string;
     start_at: string;
     end_at: string;
 }
@@ -15,6 +16,7 @@ export function ReservedBook({
     bookName,
     bookAuthor,
     bookId,
+    itemId,
     start_at,
     end_at
 }: ReservedBookProps) {
@@ -24,12 +26,12 @@ export function ReservedBook({
             <div className={styles.colunaEsquerda}>
                 <div className={styles.bookInfo}>
                     <p className={styles.name}>{bookName}</p>
-                    <p>Livro: {bookId.slice(0, 6)}</p>
+                    <p className={styles.bookID}>Livro: {bookId}</p>
                 </div>
 
                 <div className={styles.bookInfo}>
                     <p className={styles.author}>De: {bookAuthor}</p>
-                    <p className={styles.author}>Exemplar: 123412</p>
+                    <p className={styles.itemID}>Exemplar: {itemId.slice(0, 6)}</p>
                 </div>
             </div>
 

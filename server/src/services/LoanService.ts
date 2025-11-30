@@ -15,16 +15,11 @@ export class LoanService {
 
     async createReservation(userID: string, itemID: string, startAt: number, endAt: number): Promise<Reservation> {
 
-        const item = await this.itemRepository.find(itemID);
-        if (!item) throw new Error("Exemplar não encontrado");
-
-        const itemStatus = await this.getItemStatus(itemID);
-        if (itemStatus !== "disponivel") throw new Error("Exemplar não disponível");
-
+        // talvez não deixar o usuário fazer mais de uma reserva ativa para o mesmo exemplar
         const activeReservations = await this.reservationRepository.findByUserId(userID);
         const now = Date.now();
         const hasActiveReservation = activeReservations.some(r => r.startAt <= now && r.endAt >= now);
-
+        console.log({hasActiveReservation});
         if (hasActiveReservation) throw new Error("Usuário já tem uma reserva ativa");
 
         await this.client.query("BEGIN;");
