@@ -24,7 +24,7 @@ export default function Register() {
       setLoading(true)
       await register(data.name, data.email, data.cpf, data.password);
       toast.success("Conta criada com sucesso!", {duration: 2000});
-      setTimeout(() => router.push('/login'), 1000);
+      setTimeout(() => router.push('/'), 1000);
     } catch (error: any) {
       toast.error(error.message || "Erro ao cadastrar", {duration: 2000});
     } finally {
