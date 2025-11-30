@@ -2,13 +2,20 @@ export function get(route: string) {
   return fetch(urlOf(route));
 }
 
-export function post(route: string, body?: any) {
+export function post(route: string, body?: any, token?: string | null) {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  // Se houver token, adiciona o Authorization
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
   return fetch(urlOf(route), {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(body)
+    headers,
+    body: JSON.stringify(body),
   });
 }
 
