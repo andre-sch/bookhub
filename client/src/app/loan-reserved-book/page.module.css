@@ -55,3 +55,11 @@
   background-color: #000;
   color: #fff;
 }
+
+.button:disabled {
+    background-color: #ccc;
+    border-color: #999;
+    color: #666;
+    cursor: not-allowed;
+    text-decoration: none;
+}

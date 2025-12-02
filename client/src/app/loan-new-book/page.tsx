@@ -5,18 +5,32 @@ import { EmployeeLayout } from "@/app/_components/EmployeeLayout"
 import styles from './page.module.css'
 import Link from "next/link";
 import { ReservedBook } from "../_components/ReservedBook";
-import { useEffect, useState } from "react";
-import { API_ENDPOINTS } from "../api/endpoints";
+import { use, useEffect, useState } from "react";
+import { get, post } from '../api'
+import { toast } from "sonner";
+import { LoanModal } from "../_components/LoanModal";
 
 export default function LoanNewBookPage() {
 
     const router = useRouter();
+    const [open, setOpen] = useState<boolean>(false);
+    const [changeButton, setChangeButton] = useState<boolean>(false);
     const [user, setUser] = useState<any>(null);
-    const [reservations, setReservations] = useState<any>(null);
+    const [book, setBook] = useState<any>(null);
+    const [selectedItem, setSelectedItem] = useState<any>(null);
     const [loading, setLoading] = useState(false);
     const [cpf, setCpf] = useState<string>("");
     const [isbn, setISBN] = useState<string>("");
     const [rawCpf, setRawCpf] = useState<string>("");
+
+    useEffect(() => {
+        setChangeButton(false);
+        setSelectedItem(null);
+    }, [isbn, rawCpf]);
+
+    useEffect(() => {
+        console.log(selectedItem)
+    }, [selectedItem]);
 
     const formatCPF = (value: string): string => {
         const numbers = value.replace(/\D/g, '');
@@ -38,8 +52,50 @@ export default function LoanNewBookPage() {
         setISBN(onlyNumbers);
     }
 
-    function handleOnClick() {
-        // efetuar o empréstimo
+    function handleSearchButtonClick() {
+        if (rawCpf.length !== 11 || isbn.length < 8) {
+            toast.error("Dados inválidos.");
+            return;
+        } 
+
+        fetchLoanInfo(isbn);
+    }
+
+    function lookingForAvailableItems(items: any[]) {
+        const availableItems = items.filter(i => i.status === 'disponivel');
+        if (availableItems.length === 0) {
+            toast.error("Nenhum exemplar disponível para este livro.");
+        }
+        else {
+            setSelectedItem(availableItems[0]);
+        }
+    }
+
+    async function fetchLoanInfo(isbn: string) {
+        try {
+            setLoading(true)
+            const resItems = await get(`/books/${isbn}/items`);
+            const resUser = await get(`/users/cpf/${rawCpf}`);
+            const resBook = await get(`/books/${isbn}`);
+
+            if (!resUser.ok) {
+                const error = await resUser.json();
+                toast.error(error.message || "Erro ao buscar dados de novo empréstimo.");
+                return;
+            }
+
+            const dataItems = await resItems.json();
+            lookingForAvailableItems(dataItems);
+            const dataUser = await resUser.json();
+            setUser(dataUser);
+            const dataBook = await resBook.json();
+            setBook(dataBook);
+            setChangeButton(true);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoading(false)
+        }
     }
 
     return (
@@ -58,6 +114,7 @@ export default function LoanNewBookPage() {
                             type="text" 
                             value={cpf}
                             onChange={handleCPFChange}
+                            required
                         />
                     </div>
                     
@@ -70,29 +127,59 @@ export default function LoanNewBookPage() {
                             type="text" 
                             value={isbn} 
                             onChange={handleISBNChange}
+                            required
                         />
                     </div>
                 </div>
 
-                {/* Confirmar dados */}
-                <div className={styles.confirmContainer}>
-                    <p className={styles.confirmParagraph}>Confirmar dados</p>  
-
-                    <div className={styles.confirmData}>
-                        <p><span className={styles.spanTitle}>Usuário:</span> <span className={styles.number}>123455</span> <span>Diogo Felipe</span></p>
-                        <p><span className={styles.spanTitle}>Exemplar:</span> <span className={styles.number}>123455</span> <span>Diogo Felipe</span></p>
-                    </div>
-                </div>
-
-                {/* Botão de empréstimo */}
                 <div>
-                    <button 
-                        className={styles.button}
-                        onClick={handleOnClick}
-                    >
-                        Efetuar Empréstimo
-                    </button>
+                    {!changeButton ? (
+                        <button 
+                            className={styles.button}
+                            onClick={handleSearchButtonClick}
+                        >
+                            Buscar por exemplar
+                        </button>
+                    ) : (
+                        <>
+                            {user && selectedItem && (
+                                <div className={styles.confirmContainer}>
+                                    <p className={styles.confirmParagraph}>Confirmar dados</p>  
+
+                                    <div className={styles.confirmData}>
+                                        <p>
+                                            <span className={styles.spanTitle}>Usuário:</span>
+                                            <span className={styles.number}>{user.ID.slice(0, 6)}</span>
+                                            <span>{user.name}</span>
+                                        </p>
+
+                                        <p>
+                                            <span className={styles.spanTitle}>Exemplar:</span>
+                                            <span className={styles.number}>{selectedItem.ID.slice(0, 6)}</span>
+                                            <span>{book?.title}</span>
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            <button 
+                                className={styles.button}
+                                onClick={() => setOpen(true)}
+                                disabled={!user || !selectedItem}
+                            >
+                                Efetuar Empréstimo
+                            </button>
+                        </>
+                    )}
                 </div>
+
+                {open && user && selectedItem && (
+                    <LoanModal 
+                        itemId={selectedItem.ID}
+                        userId={user.ID}
+                        onClose={() => setOpen(false)}
+                    />
+                )}
 
             </div>
         </EmployeeLayout>

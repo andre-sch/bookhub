@@ -62,6 +62,17 @@ export class LoanRepositoryPostgresImpl implements LoanRepository {
         return Promise.all(result.rows.map((row) => this.deserialize(row)));
     }
 
+    public async findByUserIdAndBookIsbn(userId: string, isbn: string): Promise<Loan[]> {
+        const result = await this.client.query(
+            `SELECT loan.* FROM loan
+            JOIN book_item bi ON bi.id = loan.item_id
+            WHERE loan.user_id = $1 AND bi.isbn = $2;`,
+            [userId, isbn]
+        );
+        if (result.rows.length === 0) return [];
+        return Promise.all(result.rows.map((row) => this.deserialize(row)));
+    }
+
     public async findByItemId(itemId: string): Promise<Loan[]> {
         const result = await this.client.query(
             `SELECT * FROM loan WHERE item_id = $1;`,

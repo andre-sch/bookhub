@@ -2,35 +2,37 @@
 
 import { useState } from 'react';
 import { post } from '../api';
-import styles from './ReserveModal.module.css';
+import styles from './LoanModal.module.css';
 import { toast } from 'sonner';
 
-interface ReserveModalProps {
+interface LoanModalProps {
   itemId: string;
+  userId: string;
+  reservationId?: string;
   onClose: () => void;
 }
 
-export function ReserveModal({ itemId, onClose }: ReserveModalProps) {
+export function LoanModal({ itemId, userId, reservationId, onClose }: LoanModalProps) {
 
   function toTimestamp(dateStr: string, timeStr: string) {
     return new Date(`${dateStr}T${timeStr}:00`).getTime();
   }
 
   const [step, setStep] = useState<'form' | 'success'>('form');
-  const [reserveCode, setReserveCode] = useState('');
+  const [loanCode, setLoanCode] = useState('');
 
   const today = new Date().toISOString().split("T")[0]; 
-  const [reserveData, setReserveData] = useState({
+  const [loanData, setLoanData] = useState({
     startDate: today,
     startTime: '15:00',
-    endDate: today,
+    dueDate: today,
     endTime: '15:00'
   });
 
   const handleSubmit = async () => {
     try {
-      const startTimestamp = toTimestamp(reserveData.startDate, reserveData.startTime);
-      const endTimestamp = toTimestamp(reserveData.endDate, reserveData.endTime);
+      const startTimestamp = toTimestamp(loanData.startDate, loanData.startTime);
+      const endTimestamp = toTimestamp(loanData.dueDate, loanData.endTime);
 
       if (endTimestamp <= startTimestamp) {
         toast.error("A data e hora de término devem ser maiores que as de início.");
@@ -38,23 +40,25 @@ export function ReserveModal({ itemId, onClose }: ReserveModalProps) {
       }
 
       const token = localStorage.getItem('token');
-      const response = await post('/reservations', {
+      const response = await post('/loans', {
         itemID: itemId,
+        userID: userId,
         startAt: startTimestamp,
-        endAt: endTimestamp,
+        dueAt: endTimestamp,
+        reservationID: reservationId
       }, token);
 
       if (!response.ok) {
         const errorData = await response.json();
-        toast.error(errorData.message || 'Erro ao criar reserva.');
+        toast.error(errorData.message || 'Erro ao criar empréstimo.');
         return;
       }
 
       const data = await response.json();
-      setReserveCode(data.code);
+      setLoanCode(data.code);
       setStep('success');
     } catch (error) {
-      console.error('Erro ao criar reserva:', error);
+      console.error('Erro ao criar empréstimo:', error);
     }
   };
 
@@ -67,10 +71,10 @@ export function ReserveModal({ itemId, onClose }: ReserveModalProps) {
               ×
             </button>
 
-            <h2 className={styles.title}>Reserva</h2>
+            <h2 className={styles.title}>Empréstimo</h2>
 
             <p className={styles.description}>
-              Para efetuar o empréstimo você deverá comparecer na biblioteca dentro do prazo especificado abaixo.
+              Lembrete: Você deve retornar o exemplar na data e hora combinadas. Caso contrário, multas poderão serão aplicadas.
             </p>
 
             <div className={styles.formContainer}>
@@ -86,9 +90,10 @@ export function ReserveModal({ itemId, onClose }: ReserveModalProps) {
                     <input
                       type="date"
                       required
-                      value={reserveData.startDate}
-                      onChange={(e) => setReserveData({ ...reserveData, startDate: e.target.value })}
+                      value={loanData.startDate}
+                      onChange={(e) => setLoanData({ ...loanData, startDate: e.target.value })}
                       className={styles.input}
+                      disabled
                     />
                   </div>
                   <div className={styles.inputGroup}>
@@ -96,8 +101,8 @@ export function ReserveModal({ itemId, onClose }: ReserveModalProps) {
                     <input
                       type="time"
                       required
-                      value={reserveData.startTime}
-                      onChange={(e) => setReserveData({ ...reserveData, startTime: e.target.value })}
+                      value={loanData.startTime}
+                      onChange={(e) => setLoanData({ ...loanData, startTime: e.target.value })}
                       className={styles.input}
                     />
                   </div>
@@ -109,8 +114,8 @@ export function ReserveModal({ itemId, onClose }: ReserveModalProps) {
                     <input
                       type="date"
                       required
-                      value={reserveData.endDate}
-                      onChange={(e) => setReserveData({ ...reserveData, endDate: e.target.value })}
+                      value={loanData.dueDate}
+                      onChange={(e) => setLoanData({ ...loanData, dueDate: e.target.value })}
                       className={styles.input}
                     />
                   </div>
@@ -119,8 +124,8 @@ export function ReserveModal({ itemId, onClose }: ReserveModalProps) {
                     <input
                       type="time"
                       required
-                      value={reserveData.endTime}
-                      onChange={(e) => setReserveData({ ...reserveData, endTime: e.target.value })}
+                      value={loanData.endTime}
+                      onChange={(e) => setLoanData({ ...loanData, endTime: e.target.value })}
                       className={styles.input}
                     />
                   </div>
@@ -150,12 +155,12 @@ export function ReserveModal({ itemId, onClose }: ReserveModalProps) {
               </svg>
             </div>
 
-            <h2 className={styles.successTitle}>Reservado com Sucesso!</h2>
+            <h2 className={styles.successTitle}>Empréstimo Realizado!</h2>
 
             <div className={styles.reserveInfo}>
               <div className={styles.infoRow}>
-                <span className={styles.infoLabel}>Código da Reserva:</span>
-                <span className={styles.infoValue}>{reserveCode}</span>
+                <span className={styles.infoLabel}>Código do Empréstimo:</span>
+                <span className={styles.infoValue}>{loanCode}</span>
               </div>
               <div className={styles.infoRow}>
                 <span className={styles.infoLabel}>Identificador do Exemplar:</span>
