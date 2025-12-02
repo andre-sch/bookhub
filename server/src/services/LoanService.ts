@@ -59,11 +59,11 @@ export class LoanService {
         const itemStatus = await this.getItemStatus(itemID);
         if (itemStatus === "emprestado") throw new Error("Exemplar já está emprestado");
 
-        const activeLoans = await this.loanRepository.findByUserId(userID);
+        const activeLoans = await this.loanRepository.findByUserIdAndBookIsbn(userID, item.ISBN);
         const hasActiveLoan = activeLoans.some(
             l => l.status === 'ativo' && !l.returnedAt
         );
-        if (hasActiveLoan) throw new Error("Exemplar já está emprestado");
+        if (hasActiveLoan) throw new Error("Exemplar já está emprestado para este usuário");
 
         await this.client.query("BEGIN;");
         try { 

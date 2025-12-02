@@ -7,10 +7,14 @@ import Link from "next/link";
 import { ReservedBook } from "../_components/ReservedBook";
 import { useEffect, useState } from "react";
 import { API_ENDPOINTS } from "../api/endpoints";
+import { LoanModal } from "../_components/LoanModal";
+import { toast } from "sonner";
 
 export default function LoanReservedBookPage() {
 
     const router = useRouter();
+    const [selectedReservation, setSelectedReservation] = useState<any>(null);
+    const [open, setOpen] = useState<boolean>(false);
     const [user, setUser] = useState<any>(null);
     const [reservations, setReservations] = useState<any>(null);
     const [loading, setLoading] = useState<boolean>(false);
@@ -31,8 +35,13 @@ export default function LoanReservedBookPage() {
         setCpf(formatCPF(value));
     }
 
-    function handleOnClick() {
-        // efetuar o empréstimo
+    function handleActiveReservations(reservations: any[]) {
+        const activeReservations = reservations.filter(r => {
+            const now = Date.now();
+            const endAt = r.endAt;
+            return endAt >= now && r.itemStatus === 'reservado';
+        });
+        setReservations(activeReservations);
     }
 
     useEffect(() => {
@@ -42,6 +51,7 @@ export default function LoanReservedBookPage() {
             fetchUserByCPF(rawCpf);
         })
 
+        setSelectedReservation(null);
         return () => clearTimeout(delay);
     }, [rawCpf]);
 
@@ -60,12 +70,13 @@ export default function LoanReservedBookPage() {
 
             if (!res.ok) {
                 const error = await res.json();
-                throw new Error(error.message || "Erro na resposta da busca por cpf");
+                toast.error(error.message || "Erro ao buscar usuário.");
+                return;
             }
 
             const data = await res.json();
             setUser(data.user);
-            setReservations(data.reservations);
+            handleActiveReservations(data.reservations);
             console.log(data)
         } catch (error) {
             console.error(error);
@@ -113,13 +124,16 @@ export default function LoanReservedBookPage() {
                         <div className={styles.reservationContainer}>
                             {reservations.map((r: any) => (
                                 <ReservedBook
-                                    key={r.reservationId}
+                                    key={r.reservationID}
                                     bookName={r.bookTitle}
                                     bookAuthor={r.authors[0]}
                                     bookId={r.bookIsbn}
                                     itemId={r.itemID}
                                     start_at={r.startAt}
                                     end_at={r.endAt}
+
+                                    isSelected={selectedReservation?.reservationID === r.reservationID}
+                                    onSelect={() => setSelectedReservation(r)}
                                 />
                             ))}
                         </div>
@@ -129,7 +143,8 @@ export default function LoanReservedBookPage() {
                         <div>
                             <button 
                                 className={styles.button}
-                                onClick={handleOnClick}
+                                onClick={() => setOpen(true)}
+                                disabled={reservations.length === 0 || !selectedReservation}
                             >
                                 Efetuar Empréstimo
                             </button>
@@ -137,7 +152,17 @@ export default function LoanReservedBookPage() {
                     </>
                 ) : (null)}
 
-                
+                {open && user && selectedReservation && (
+                    <LoanModal 
+                        itemId={selectedReservation.itemID}
+                        userId={user.ID}
+                        reservationId={selectedReservation.reservationID}
+                        onClose={() => {
+                            fetchUserByCPF(rawCpf);
+                            setOpen(false);
+                        }}
+                    />
+                )}
 
             </div>
         </EmployeeLayout>
