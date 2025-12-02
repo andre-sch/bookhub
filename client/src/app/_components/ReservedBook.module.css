@@ -12,6 +12,11 @@
     cursor: pointer;
 }
 
+.selected {
+  background: #bcbcbc;
+  border-color: #8a8a8a;
+}
+
 .colunaEsquerda {
   flex: 2; 
   padding-right: 10px;

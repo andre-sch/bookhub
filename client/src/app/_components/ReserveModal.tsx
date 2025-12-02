@@ -6,13 +6,11 @@ import styles from './ReserveModal.module.css';
 import { toast } from 'sonner';
 
 interface ReserveModalProps {
-  item: {
-    ID: string;
-  };
+  itemId: string;
   onClose: () => void;
 }
 
-export function ReserveModal({ item, onClose }: ReserveModalProps) {
+export function ReserveModal({ itemId, onClose }: ReserveModalProps) {
 
   function toTimestamp(dateStr: string, timeStr: string) {
     return new Date(`${dateStr}T${timeStr}:00`).getTime();
@@ -41,7 +39,7 @@ export function ReserveModal({ item, onClose }: ReserveModalProps) {
 
       const token = localStorage.getItem('token');
       const response = await post('/reservations', {
-        itemID: item.ID,
+        itemID: itemId,
         startAt: startTimestamp,
         endAt: endTimestamp,
       }, token);
@@ -161,7 +159,7 @@ export function ReserveModal({ item, onClose }: ReserveModalProps) {
               </div>
               <div className={styles.infoRow}>
                 <span className={styles.infoLabel}>Identificador do Exemplar:</span>
-                <span className={styles.infoValue}>{item.ID.slice(0,8)}</span>
+                <span className={styles.infoValue}>{itemId.slice(0,8)}</span>
               </div>
             </div>
 

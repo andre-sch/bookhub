@@ -147,7 +147,7 @@ export function BookDetailsClient({ isbn, book, items }: BookDetailsClientProps)
 
       {open && isAuthenticated && availableItem && (
         <ReserveModal
-          item={availableItem}
+          itemId={availableItem.ID}
           onClose={() => setOpen(false)}
         />
       )}
