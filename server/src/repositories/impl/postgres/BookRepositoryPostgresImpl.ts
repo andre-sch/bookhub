@@ -167,32 +167,69 @@ export class BookRepositoryPostgresImpl implements BookRepository {
 
   public async listCatalog(options?: { booksPerRow?: number; }) {
     const booksPerRow = options?.booksPerRow || 8;
+    
+    const now = new Date();
+    const startOfYear = new Date(now.getFullYear(), 0, 0);
+    const dayOfYear = Math.floor((now.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24));
+    const hourOfDay = now.getHours();
+    const minutes = now.getMinutes();
+    const timeOffset = (dayOfYear * 24 * 12 + hourOfDay * 12 + Math.floor(minutes / 5)) % 100;
 
-    const topBooks = (await this.client.query(`
-      SELECT DISTINCT ON (bp.isbn) * FROM book_popularity bp
-      ORDER BY bp.isbn, bp.popularity_score DESC
-      LIMIT ${booksPerRow};
-    `)).rows.map(book => ({ ...book, ISBN: book.isbn }));
-
-    const topBooksBy = (genre: string) => (
-      this.client.query(`
-        SELECT DISTINCT ON (bp.isbn)
-          bp.*,
-          author_obj.list as authors
+    const topBooksQuery = await this.client.query(`
+      WITH distinct_books AS (
+        SELECT DISTINCT ON (bp.isbn) 
+          bp.*
         FROM book_popularity bp
-        JOIN book_genre bg ON bp.isbn = bg.book_isbn
-        JOIN LATERAL (
-          SELECT ARRAY_AGG(a.name ORDER BY a.name) AS list
-          FROM book_author ba
-          JOIN author a ON ba.author_id = a.id
-          WHERE ba.book_isbn = bp.isbn
-        ) AS author_obj ON TRUE
-        WHERE bg.genre LIKE $1
         ORDER BY bp.isbn, bp.popularity_score DESC
-        LIMIT ${booksPerRow};`,
-        [`%${genre}%`]
+      ),
+      ranked_books AS (
+        SELECT *, ROW_NUMBER() OVER (ORDER BY popularity_score DESC) as rn
+        FROM distinct_books
+      ),
+      total_count AS (
+        SELECT COUNT(*)::int as cnt FROM ranked_books
       )
-    ).then(result => result.rows.map(book => ({ ...book, ISBN: book.isbn })));
+      SELECT rb.* FROM ranked_books rb
+      CROSS JOIN total_count tc
+      ORDER BY ((rb.rn - 1 + $1) % GREATEST(tc.cnt, 1)) + 1
+      LIMIT $2;`,
+      [timeOffset, booksPerRow]
+    );
+    
+    const topBooks = topBooksQuery.rows.map(book => ({ ...book, ISBN: book.isbn }));
+
+    const topBooksBy = async (genre: string) => {
+      const result = await this.client.query(`
+        WITH distinct_books AS (
+          SELECT DISTINCT ON (bp.isbn)
+            bp.*,
+            author_obj.list as authors
+          FROM book_popularity bp
+          JOIN book_genre bg ON bp.isbn = bg.book_isbn
+          JOIN LATERAL (
+            SELECT ARRAY_AGG(a.name ORDER BY a.name) AS list
+            FROM book_author ba
+            JOIN author a ON ba.author_id = a.id
+            WHERE ba.book_isbn = bp.isbn
+          ) AS author_obj ON TRUE
+          WHERE bg.genre LIKE $1
+          ORDER BY bp.isbn, bp.popularity_score DESC
+        ),
+        ranked_books AS (
+          SELECT *, ROW_NUMBER() OVER (ORDER BY popularity_score DESC) as rn
+          FROM distinct_books
+        ),
+        total_count AS (
+          SELECT COUNT(*)::int as cnt FROM ranked_books
+        )
+        SELECT rb.* FROM ranked_books rb
+        CROSS JOIN total_count tc
+        ORDER BY ((rb.rn - 1 + $2) % GREATEST(tc.cnt, 1)) + 1
+        LIMIT $3;`,
+        [`%${genre}%`, timeOffset, booksPerRow]
+      );
+      return result.rows.map(book => ({ ...book, ISBN: book.isbn }));
+    };
 
     const catalog: Record<string, Book[]> = {
       trends: topBooks,
