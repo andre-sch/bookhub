@@ -16,15 +16,22 @@ export function ReserveModal({ itemId, onClose }: ReserveModalProps) {
     return new Date(`${dateStr}T${timeStr}:00`).getTime();
   }
 
+  function getCurrentTime() {
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, "0");
+    const minutes = String(now.getMinutes()).padStart(2, "0");
+    return `${hours}:${minutes}`;
+  }
+
   const [step, setStep] = useState<'form' | 'success'>('form');
   const [reserveCode, setReserveCode] = useState('');
 
   const today = new Date().toISOString().split("T")[0]; 
   const [reserveData, setReserveData] = useState({
     startDate: today,
-    startTime: '15:00',
+    startTime: getCurrentTime(),
     endDate: today,
-    endTime: '15:00'
+    endTime: getCurrentTime()
   });
 
   const handleSubmit = async () => {
