@@ -70,7 +70,7 @@ Once you arrive at the library (within the selected time period), you go to the 
 The librarian will ask for your CPF (similar to SSN in US) and check that there is a reserved book under your name. After that, the book loan will be released to you. Simple as that!
 
 The following steps describe the process the librarian must perform:
-1) Click on the menu icon on the top left to see the menu actions. Select "Empréstimo de livro" (Book Loan) option.
+1) Click on the menu icon on the top left to see the menu actions. Select "Empréstimo de Livros" (Book Loan) option.
 
 <table align="center">
   <td align="center">
