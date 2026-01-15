@@ -166,8 +166,9 @@ Server:
   - JWT for RBAC (Role-Based Access Control)
   - Umzug for database migrations
   - Zod for schema and data validation
+  - Books extracted from Open Library API
 
 Client:
-  - React + Next.js
+  - React + Next.js + CSS modules
   - Fetch API for REST API communication
   - Sonner for toast notification
