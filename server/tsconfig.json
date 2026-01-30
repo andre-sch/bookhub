@@ -1,9 +1,9 @@
 {
   "compilerOptions": {
     "baseUrl": ".",
-    "paths": {"@/*": ["./src/*"]},
-    "rootDir": "src",
+    "rootDir": ".",
     "outDir": "dist",
+    "paths": {"@/*": ["./src/*"]},
     "module": "nodenext",
     "target": "esnext",
     "lib": ["esnext"],
