@@ -1,7 +1,9 @@
 import 'tsconfig-paths/register';
 import "dotenv/config";
+import fs from "fs";
 import z from "zod";
 import cors from "cors";
+import https from "https";
 import express, { Request, Response } from "express";
 import bcrypt from "bcrypt";
 import { client } from "./infra/pg/connection";
@@ -38,6 +40,7 @@ import { AuthRequest } from "./dto/AuthRequest";
 import { AuthService } from "./auth/auth.service";
 import { ProfileService } from "./services/ProfileService";
 import { authenticateJWT, authorizeRoles } from "./auth/middleware";
+import { env } from './config/env';
 
 const app = express();
 app.use(express.json());
@@ -1650,5 +1653,16 @@ app.use("/", (error: Error, request: Request, response: Response, next: Function
   response.status(code).json({ message, body });
 });
 
-const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => console.log(`server is running on port ${PORT}`));
+if (env.NODE_ENV == "production") {
+  const options = {
+    key: fs.readFileSync(env.HTTPS_KEY_PATH || "key.pem"),
+    cert: fs.readFileSync(env.HTTPS_CERT_PATH || "cert.pem")
+  }
+
+  https
+    .createServer(options, app)
+    .listen(443);
+} else {
+  const PORT = env.PORT || 4000;
+  app.listen(PORT, () => console.log(`server is running on port ${PORT}`));
+}

@@ -1,6 +1,10 @@
-.env
-.next
-.vscode
 node_modules
 dist
+
+.vscode
 .vercel
+.next
+
+.env
+key.pem
+cert.pem
