@@ -1653,6 +1653,8 @@ app.use("/", (error: Error, request: Request, response: Response, next: Function
   response.status(code).json({ message, body });
 });
 
+const PORT = env.PORT || 4000;
+
 if (env.NODE_ENV == "production") {
   const options = {
     key: fs.readFileSync(env.HTTPS_KEY_PATH || "key.pem"),
@@ -1661,8 +1663,5 @@ if (env.NODE_ENV == "production") {
 
   https
     .createServer(options, app)
-    .listen(443);
-} else {
-  const PORT = env.PORT || 4000;
-  app.listen(PORT, () => console.log(`server is running on port ${PORT}`));
-}
+    .listen(PORT, () => console.log(`server is running on port ${PORT}`));
+} else app.listen(PORT, () => console.log(`server is running on port ${PORT}`));
