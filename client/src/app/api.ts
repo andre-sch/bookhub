@@ -54,6 +54,5 @@ export function del(route: string, token?: string | null) {
 }
 
 function urlOf(route: string) {
-  const connector = route.startsWith("/") ? "" : "/";
-  return process.env.NEXT_PUBLIC_API_URL + connector + route;
+  return new URL(route, process.env.NEXT_PUBLIC_API_URL!).href;
 }
