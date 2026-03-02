@@ -26,7 +26,7 @@ app.post('/webhook', (request, response) => {
   });
 });
 
-const port = process.env.PORT || "4001";
+const port = process.env.WEBHOOK_PORT || "4001";
 const options = {
   key: fs.readFileSync(process.env.HTTPS_KEY_PATH || "key.pem"),
   cert: fs.readFileSync(process.env.HTTPS_CERT_PATH || "cert.pem")
