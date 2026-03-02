@@ -1650,9 +1650,5 @@ app.use("/", (error: Error, request: Request, response: Response, next: Function
   response.status(code).json({ message, body });
 });
 
-if (process.env.NODE_ENV !== "production") {
-  const PORT = process.env.PORT || 4000;
-  app.listen(PORT, () => console.log(`server is running on port ${PORT}`));
-}
-
-export default app;
+const PORT = process.env.PORT || 4000;
+app.listen(PORT, () => console.log(`server is running on port ${PORT}`));
