@@ -2,6 +2,7 @@ require("dotenv/config");
 
 const express = require('express');
 const https = require('https');
+const cors = require('cors');
 
 const fs = require('fs');
 const path = require('path');
@@ -10,6 +11,7 @@ const subroutine = require('child_process');
 const app = express();
 
 app.use(express.json());
+app.use(cors());
 
 app.post('/webhook', (request, response) => {
   console.log('Received webhook.');
