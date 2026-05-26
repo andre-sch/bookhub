@@ -6,28 +6,28 @@ import { IoSearch } from "react-icons/io5";
 
 import styles from "./page.module.css";
 
-export function SearchInput() {
-  const router = useRouter();
-  const [query, setQuery] = useState("");
+export function SearchInput(props: { searchQuery: string }) {
+	const router = useRouter();
+	const [query, setQuery] = useState(props.searchQuery);
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    e.preventDefault();
+	function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+		e.preventDefault();
 
-    const input = e.target.value;
-    setQuery(input);
+		const input = e.target.value;
+		setQuery(input);
 
-    router.push(`/search?q=${encodeURIComponent(input.trim())}`);
-  }
+		router.push(`/search?q=${encodeURIComponent(input.trim())}`);
+	}
 
-  return (
-    <div className={styles.inputContainer}>
-      <IoSearch size={24} />
-      <input
-        type="text"
-        placeholder="Pesquise por livros, autores, gêneros..."
-        value={query}
-        onChange={handleChange}
-      />
-    </div>
-  );
+	return (
+		<div className={styles.inputContainer}>
+			<IoSearch size={24} />
+			<input
+				type="text"
+				placeholder="Pesquise por livros, autores, gêneros..."
+				value={query}
+				onChange={handleChange}
+			/>
+		</div>
+	);
 }
